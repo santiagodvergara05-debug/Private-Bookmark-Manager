@@ -1,0 +1,34 @@
+# ==============================================================================
+# ARCHIVO DE EJEMPLO DE CONFIGURACIÓN (.env)
+# Copia este archivo a ".env" y edita los valores antes de iniciar la app.
+# Puedes administrar estos parámetros fácilmente ejecutando: python CLI_admin.py
+# ==============================================================================
+
+# Clave secreta para firmar y validar las cookies de sesión en Flask
+# Genera o rota ejecutando: python CLI_admin.py
+SECRET_KEY=tu_clave_secreta_aqui
+
+# Clave maestra exclusiva para desbloquear la configuración crítica (256 bits)
+# Genera o consulta ejecutando: python CLI_admin.py
+MASTER_KEY=tu_master_key_aqui
+
+# Contraseña de acceso a la web (cámbiala antes de usarla)
+APP_PASSWORD=cambiame
+
+# Mostrar íconos favicon junto a los enlaces ('true' o 'false')
+MOSTRAR_FAVICONS='true'
+
+# Puerto de la aplicación local
+PORT='5050'
+
+# Alcance de red ('127.0.0.1' solo PC local, '0.0.0.0' accesible en toda la red local)
+HOST='127.0.0.1'
+
+# Modo depuración de Flask ('true' para desarrollo, 'false' para uso normal)
+FLASK_DEBUG='true'
+
+# Registro detallado de acciones en la terminal ('true' o 'false')
+LOG_MODE='true'
+
+# Fecha del último respaldo (formato YYYY-MM-DD, se actualiza automáticamente al exportar)
+# ULTIMO_BACKUP=

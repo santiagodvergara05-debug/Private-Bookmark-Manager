@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block titulo %}{{ carpeta_actual['nombre'] if carpeta_actual else 'Mis Marcadores' }}{% endblock %}
+{% block contenido %}
+    <h1>
+    <span class="badge-app">PBM</span>
+    {{ carpeta_actual['nombre'] if carpeta_actual else 'Mis Marcadores' }}
+    </h1>
+
+    {% if contraseña_por_defecto %}
+        <div class="aviso aviso-peligro">
+            ⚠️ Estás usando la contraseña por defecto (<code>cambiame</code>). Cambiala en <a href="{{ url_for('marcadores.configuracion') }}" class="btn-link">Configuración</a> o en ajustes desde la consola del servidor.
+        </div>
+    {% endif %}
+
+    {% if recordar_backup %}
+        <div class="aviso aviso-advertencia">
+            <span>⚠️ Hace {{ dias_sin_backup }} días que no hacés una copia de seguridad.</span>
+            <div class="aviso-acciones">
+                <a href="{{ url_for('marcadores.exportar') }}" class="btn-link">Descargar backup</a>
+                <form method="POST" action="{{ url_for('marcadores.posponer_backup') }}">
+                    <button type="submit" class="btn-secundario">Recordarme más tarde</button>
+                </form>
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="barra-herramientas">
+        <form method="GET" action="{{ url_for('marcadores.buscar') }}" class="form-busqueda">
+            <input type="text" name="q" placeholder="Buscar marcador...">
+            <button type="submit">Buscar</button>
+        </form>
+
+        <nav class="acciones-principales">
+            <a href="{{ url_for('marcadores.todos') }}" class="btn-nav">📋 Ver todos</a>
+            <a href="{{ url_for('marcadores.configuracion') }}" class="btn-nav">⚙️ Configuración</a>
+            <a href="{{ url_for('marcadores.logout') }}" class="btn-nav">🔒 Cerrar sesión</a>
+        </nav>
+    </div>
+
+    {% if carpeta_actual %}
+        <p><a href="{{ url_for('marcadores.ver_carpeta_ruta', carpeta_id=carpeta_actual['carpeta_padre_id']) if carpeta_actual['carpeta_padre_id'] else url_for('marcadores.home') }}">⬆️ Subir</a></p>
+    {% endif %}
+
+    <!-- ACCIONES DE CREACIÓN ARRIBA -->
+    <div class="seccion-creacion">
+        <details class="caja-desplegable">
+            <summary class="btn-desplegable">➕ Agregar marcador acá</summary>
+            <form method="POST" action="{{ url_for('marcadores.agregar') }}" class="form-crear">
+                <input type="text" name="titulo" placeholder="Título (opcional si autocompletás)">
+                <input type="url" name="url" placeholder="https://..." required>
+                <input type="text" name="nota" placeholder="Nota (opcional)">
+                <label class="label-checkbox">
+                    <input type="checkbox" name="autocompletar">
+                    🔍 Autocompletar título
+                </label>
+                <input type="hidden" name="carpeta_id" value="{{ carpeta_actual['id'] if carpeta_actual else '' }}">
+                <button type="submit">Agregar</button>
+            </form>
+        </details>
+
+        <details class="caja-desplegable">
+            <summary class="btn-desplegable">📁 Nueva carpeta acá</summary>
+            <form method="POST" action="{{ url_for('marcadores.crear_carpeta') }}" class="form-crear">
+                <input type="text" name="nombre" placeholder="Nombre de carpeta" required>
+                <input type="hidden" name="carpeta_padre_id" value="{{ carpeta_actual['id'] if carpeta_actual else '' }}">
+                <button type="submit">Crear carpeta</button>
+            </form>
+        </details>
+    </div>
+
+    <h3>Carpetas</h3>
+    <ul>
+        {% for c in subcarpetas %}
+            <li>
+                📁 <a href="{{ url_for('marcadores.ver_carpeta_ruta', carpeta_id=c['id']) }}">{{ c['nombre'] }}</a>
+                <a href="{{ url_for('marcadores.editar_carpeta', carpeta_id=c['id']) }}">✏️</a>
+                <a href="{{ url_for('marcadores.eliminar_carpeta', carpeta_id=c['id']) }}" onclick="return confirm('¿Eliminar esta carpeta? Su contenido se moverá a Sin carpeta.');">🗑️</a>
+            </li>
+        {% endfor %}
+    </ul>
+
+    <h3>Marcadores</h3>
+    <ul>
+        {% for m in marcadores %}
+            <li class="marcador-item">
+                <div class="marcador-info">
+                    {% if mostrar_favicons %}
+                        <img src="https://www.google.com/s2/favicons?domain={{ m['url'] }}&sz=32" alt="" width="16" height="16">
+                    {% endif %}
+                    <a href="{{ m['url'] }}" class="marcador-enlace" {% if abrir_nueva_pestana %}target="_blank" rel="noopener noreferrer"{% endif %}>
+                        {{ m['titulo'] }}
+                    </a>
+                    {% if m['nota'] %}
+                        <span class="nota-wrapper">
+                            <span class="nota">📝 {{ m['nota'] }}</span>
+                            <div class="globo-nota">{{ m['nota'] }}</div>
+                        </span>
+                    {% endif %}
+                </div>
+
+                <div class="marcador-acciones">
+    {% if m['progreso'] and m['progreso'] > 0 %}
+        <span class="progreso">
+            <form method="POST" action="{{ url_for('marcadores.progreso', id_marcador=m['id'], accion='restar') }}" style="display:inline;">
+                <button type="submit">−</button>
+            </form>
+            <span class="num-progreso">{{ m['progreso'] }}</span>
+            <form method="POST" action="{{ url_for('marcadores.progreso', id_marcador=m['id'], accion='sumar') }}" style="display:inline;">
+                <button type="submit">+</button>
+            </form>
+        </span>
+    {% endif %}
+
+    <a href="{{ url_for('marcadores.editar', id_marcador=m['id']) }}">✏️</a>
+    <a href="{{ url_for('marcadores.eliminar', id_marcador=m['id']) }}" onclick="return confirm('¿Eliminar este marcador?');">🗑️</a>
+</div>
+            </li>
+        {% endfor %}
+    </ul>
+{% endblock %}

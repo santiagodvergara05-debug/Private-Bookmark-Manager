@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block titulo %}Inicio{% endblock %} — PBM</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="{% if modo_oscuro %}oscuro{% endif %}">
+    <div class="contenedor">
+        {% block contenido %}{% endblock %}
+
+        <footer style="text-align:center; color:#888; font-size:0.75rem; margin-top:40px; line-height: 1.8;">
+    <div>PBM — Private Bookmark Manager — v{{ app_version }}</div>
+    <div>Desarrollado por <strong>Mi</strong></div>
+
+    <!-- Fila de enlaces estilo repositorio -->
+    <div style="margin-top: 8px; display: flex; justify-content: center; align-items: center; gap: 18px; flex-wrap: wrap;">
+        <!-- Enlace al repositorio principal -->
+        <a href="https://github.com/santiagodvergara05-debug/Private-Bookmark-Manager" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none; opacity: 0.85;">
+            &lt;&gt; GitHub
+        </a>
+    </div>
+</footer>
+    </div>
+</body>
+</html>

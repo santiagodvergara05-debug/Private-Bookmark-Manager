@@ -1,0 +1,8 @@
+.venv/
+.env
+__pycache__/
+*.pyc
+marcadores.db
+ultimo_backup.txt
+silenciar_backup.txt
+backup_marcadores*.json

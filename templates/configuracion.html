@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% block titulo %}Configuración{% endblock %}
+{% block contenido %}
+    <!-- Navegación de retorno al inicio -->
+    <div class="nav-volver">
+    <a href="{{ url_for('marcadores.home') }}" class="btn-nav">⬅️ Volver a Mis Marcadores</a>
+</div>
+
+    <!-- Título y botón principal de guardado juntos -->
+    <div class="config-header">
+        <h1>⚙️ Configuración</h1>
+        <button type="submit" form="form-ajustes" class="btn-primario">💾 Guardar Cambios</button>
+    </div>
+
+    {% if guardado %}
+        <div class="aviso aviso-exito">
+            ✅ Cambios guardados correctamente. Reiniciá el servidor si cambiaste opciones de red o sistema.
+        </div>
+    {% endif %}
+
+    <!-- Formulario principal de ajustes -->
+    <form method="POST" id="form-ajustes" class="form-config-panel">
+        
+        <!-- Tarjeta: Preferencias Generales -->
+        <div class="tarjeta-config">
+            <h3 class="tarjeta-titulo">🎨 Preferencias Generales</h3>
+            <p class="tarjeta-desc">Ajustes visuales y de navegación cotidiana.</p>
+            
+            <div class="campo-grupo">
+                <label for="port">Puerto local del servidor:</label>
+                <input type="text" id="port" name="port" value="{{ valores.get('PORT', '5050') }}" class="input-corto">
+            </div>
+
+            <div class="lista-checkboxes">
+                <label class="label-checkbox">
+                    <input type="checkbox" name="modo_oscuro" {% if valores.get('MODO_OSCURO', 'false') == 'true' %}checked{% endif %}>
+                    Modo oscuro
+                </label>
+
+                <label class="label-checkbox">
+                    <input type="checkbox" name="mostrar_favicons" {% if valores.get('MOSTRAR_FAVICONS', 'true') == 'true' %}checked{% endif %}>
+                    Mostrar íconos de sitios (favicons vía API de Google)
+                </label>
+
+                <label class="label-checkbox">
+                    <input type="checkbox" name="abrir_nueva_pestana" {% if valores.get('ABRIR_NUEVA_PESTANA', 'true') == 'true' %}checked{% endif %}>
+                    Abrir marcadores en una pestaña nueva
+                </label>
+            </div>
+        </div>
+
+        <!-- Tarjeta: Ajustes Críticos del Sistema -->
+        <div class="tarjeta-config {% if not desbloqueo_critico_activo %}tarjeta-bloqueada{% endif %}">
+            <h3 class="tarjeta-titulo">🔒 Configuración Crítica del Sistema</h3>
+            
+            {% if desbloqueo_critico_activo %}
+                <div class="aviso aviso-exito" style="margin-top: 8px;">
+    🔓 Sesión crítica activa. Expira en <b id="texto-contador" data-segundos="{{ desbloqueo_segundos_restantes | default(0) }}">{{ (desbloqueo_segundos_restantes // 60) }} min {{ (desbloqueo_segundos_restantes % 60) }} seg</b>.
+</div>
+
+                <div class="campo-grupo">
+    <label>Nueva contraseña de acceso (dejar vacío para no cambiar):</label>
+    <input type="password" name="password">
+</div>
+
+                <div class="campo-grupo">
+                    <label>Host (alcance de red):</label>
+                    <select name="host">
+                        <option value="127.0.0.1" {% if valores.get('HOST', '127.0.0.1') == '127.0.0.1' %}selected{% endif %}>
+                            127.0.0.1 — Solo esta PC (local)
+                        </option>
+                        <option value="0.0.0.0" {% if valores.get('HOST') == '0.0.0.0' %}selected{% endif %}>
+                            0.0.0.0 — Accesible en red local (PC + celular)
+                        </option>
+                    </select>
+                </div>
+
+                <div class="lista-checkboxes">
+                    <label class="label-checkbox">
+                        <input type="checkbox" name="flask_debug" {% if valores.get('FLASK_DEBUG', 'false') == 'true' %}checked{% endif %}>
+                        Modo depuración (Debug mode)
+                    </label>
+
+                    <label class="label-checkbox">
+                        <input type="checkbox" name="log_mode" {% if valores.get('LOG_MODE', 'false') == 'true' %}checked{% endif %}>
+                        Modo registro en consola (Log mode)
+                    </label>
+                </div>
+            {% else %}
+                <p class="tarjeta-desc">Opciones avanzadas (contraseña, alcance de red y modo debug) protegidas por llave maestra.</p>
+                <div class="aviso aviso-advertencia">
+                    🔒 Sección bloqueada. Desbloqueá con tu Master Key más abajo para modificar estos valores.
+                </div>
+            {% endif %}
+
+        </div>
+    </form>
+
+    <!-- Tarjeta: Gestión de Desbloqueo Crítico -->
+    <div class="tarjeta-config">
+        <h3 class="tarjeta-titulo">🔑 Llave Maestra (Master Key)</h3>
+        {% if desbloqueo_critico_activo %}
+            <p class="tarjeta-desc">El acceso crítico está habilitado actualmente.</p>
+            <form method="POST" action="{{ url_for('marcadores.bloquear_critico') }}" style="margin:0;">
+                <button type="submit" class="btn-secundario">🔒 Volver a bloquear configuración crítica</button>
+            </form>
+        {% else %}
+            <p class="tarjeta-desc">Ingresá la MASTER_KEY configurada en tu archivo <code>.env</code> para habilitar cambios críticos.</p>
+            {% if request.args.get('error_master') %}
+                <div class="aviso aviso-peligro">❌ Llave maestra incorrecta.</div>
+            {% endif %}
+            <form method="POST" action="{{ url_for('marcadores.desbloquear_critico') }}" class="form-en-linea">
+                <input type="password" name="master_key" placeholder="Pegá la MASTER_KEY aquí" required style="width: 260px;">
+                <button type="submit" class="btn-secundario">🔓 Autenticar para desbloquear</button>
+            </form>
+        {% endif %}
+    </div>
+
+    <!-- Tarjeta: Copias de Seguridad -->
+    <div class="tarjeta-config">
+        <h3 class="tarjeta-titulo">💾 Copia de Seguridad</h3>
+        <p class="tarjeta-desc">Exportá tus marcadores y carpetas a formato JSON o restauralos desde un backup.</p>
+        
+        <div class="fila-backup">
+            <a href="{{ url_for('marcadores.exportar') }}" class="btn-nav">⬇️ Descargar Backup (JSON)</a>
+            
+            <form method="POST" action="{{ url_for('marcadores.importar') }}" enctype="multipart/form-data" class="form-en-linea" style="margin:0;">
+                <input type="file" id="input-backup" name="archivo" accept=".json" required>
+                <button type="submit" class="btn-secundario">⬆️ Restaurar Backup</button>
+            </form>
+        </div>
+
+        <!-- Cartel dinámico que aparece solo cuando se elige un archivo -->
+        <div id="aviso-archivo" class="aviso-archivo-adjuntado" style="display: none;">
+            📄 Archivo seleccionado: <b id="nombre-archivo"></b> — Listo. Ahora tocá <b>Restaurar Backup</b>.
+        </div>
+    </div>
+
+    <!-- Tarjeta: Seguridad de Sesión -->
+    <div class="tarjeta-config">
+        <h3 class="tarjeta-titulo">🛡️ Seguridad de Sesiones</h3>
+        <p class="tarjeta-desc">Regenera la llave interna de Flask cerrando la sesión en todas las máquinas y navegadores.</p>
+        <form method="POST" action="{{ url_for('marcadores.cerrar_sesiones_globales') }}"
+              onsubmit="return confirm('Esto cerrará la sesión en todos los dispositivos. ¿Continuar?');" style="margin:0;">
+            <button type="submit" class="btn-secundario">🚪 Cerrar sesión en todos lados</button>
+        </form>
+    </div>
+
+    <!-- Tarjeta: Zona de Peligro -->
+    <div class="tarjeta-config tarjeta-peligro">
+        <h3 class="tarjeta-titulo" style="color: var(--peligro);">⚠️ Zona de Peligro</h3>
+        {% if desbloqueo_critico_activo %}
+            <p class="tarjeta-desc">Esta acción eliminará todas las carpetas y marcadores sin posibilidad de recuperación.</p>
+            <form method="POST" action="{{ url_for('marcadores.borrar_todo_ruta') }}"
+                  onsubmit="return confirm('¿SEGURO? Se borrará TODA la base de datos permanentemente.');" style="margin:0;">
+                <button type="submit" class="btn-peligro">🗑️ Borrar toda la base de datos</button>
+            </form>
+        {% else %}
+            <p class="tarjeta-desc" style="opacity: 0.7;">Desbloqueá la configuración crítica con la llave maestra para acceder al borrado completo.</p>
+        {% endif %}
+    </div>
+
+    <script>
+        // Detector visual para cuando se adjunta un backup JSON
+        const inputBackup = document.getElementById('input-backup');
+        const avisoArchivo = document.getElementById('aviso-archivo');
+        const nombreArchivo = document.getElementById('nombre-archivo');
+
+        if (inputBackup) {
+            inputBackup.addEventListener('change', function() {
+                if (this.files && this.files.length > 0) {
+                    nombreArchivo.textContent = this.files[0].name;
+                    avisoArchivo.style.display = 'block';
+                } else {
+                    avisoArchivo.style.display = 'none';
+                }
+            });
+        }
+
+        // Contador regresivo de desbloqueo crítico (solo si el elemento existe en pantalla)
+        const elementoTexto = document.getElementById("texto-contador");
+        if (elementoTexto) {
+            let segundosRestantes = parseInt(elementoTexto.dataset.segundos || "0", 10);
+
+            const cuentaAtras = setInterval(() => {
+                segundosRestantes--;
+
+                if (segundosRestantes <= 0) {
+                    clearInterval(cuentaAtras);
+                    window.location.reload();
+                } else {
+                    const min = Math.floor(segundosRestantes / 60);
+                    const seg = segundosRestantes % 60;
+                    elementoTexto.textContent = `${min} min ${seg < 10 ? '0' : ''}${seg} seg`;
+                }
+            }, 1000);
+        }
+    </script>
+    {% endblock %}

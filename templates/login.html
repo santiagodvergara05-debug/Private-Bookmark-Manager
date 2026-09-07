@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block titulo %}Iniciar sesión - Marcadores Privados{% endblock %}
+
+{% block contenido %}
+<div class="login-wrapper">
+    <div class="login-card">
+        <div class="login-header">
+    <div class="login-badge">PBM</div>
+    <h1 class="login-titulo">Marcadores Privados</h1>
+    <p class="login-creditos">v{{ app_version }}</p>
+</div>
+
+        <form method="POST" class="login-form">
+            <div class="login-input-grupo">
+                <input 
+                    type="password" 
+                    name="password" 
+                    placeholder="Contraseña de acceso" 
+                    required 
+                    autofocus
+                    autocomplete="current-password"
+                >
+            </div>
+            <button type="submit" class="login-btn">Entrar</button>
+        </form>
+
+        {% if error %}
+            <div class="aviso aviso-peligro login-error">
+                <span>{{ error }}</span>
+                {% if mostrar_ayuda %}
+                    <p class="login-ayuda">
+                        ¿Olvidaste la contraseña? Restablecela con: <code>python CLI_admin.py</code>
+                    </p>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

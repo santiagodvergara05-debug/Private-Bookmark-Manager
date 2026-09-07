@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block titulo %}Todos los marcadores{% endblock %}
+{% block contenido %}
+    <!-- Navegación de retorno al inicio -->
+    <div class="nav-volver">
+    <a href="{{ url_for('marcadores.home') }}" class="btn-nav">⬅️ Volver a Mis Marcadores</a>
+</div>
+
+    <h1>📋 Todos los marcadores</h1>
+
+    {% for nombre_grupo, items in agrupados.items() %}
+        <h3>📁 {{ nombre_grupo }}</h3>
+        <ul>
+            {% for m in items %}
+                <li class="marcador-item">
+                    <!-- Lado izquierdo: icono, título y nota con globo -->
+                    <div class="marcador-info">
+                        {% if mostrar_favicons %}
+                            <img src="https://www.google.com/s2/favicons?domain={{ m['url'] }}&sz=32" alt="" width="16" height="16">
+                        {% endif %}
+                        <a href="{{ m['url'] }}" class="marcador-enlace" {% if abrir_nueva_pestana %}target="_blank" rel="noopener noreferrer"{% endif %}>
+                            {{ m['titulo'] }}
+                        </a>
+                        {% if m['nota'] %}
+                            <span class="nota-wrapper">
+                                <span class="nota">📝 {{ m['nota'] }}</span>
+                                <div class="globo-nota">{{ m['nota'] }}</div>
+                            </span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Lado derecho: contador y botones alineados -->
+                    <div class="marcador-acciones">
+    {% if m['progreso'] and m['progreso'] > 0 %}
+        <span class="progreso">
+            <form method="POST" action="{{ url_for('marcadores.progreso', id_marcador=m['id'], accion='restar') }}" style="display:inline;">
+                <button type="submit">−</button>
+            </form>
+            <span class="num-progreso">{{ m['progreso'] }}</span>
+            <form method="POST" action="{{ url_for('marcadores.progreso', id_marcador=m['id'], accion='sumar') }}" style="display:inline;">
+                <button type="submit">+</button>
+            </form>
+        </span>
+    {% endif %}
+
+    <a href="{{ url_for('marcadores.editar', id_marcador=m['id']) }}">✏️</a>
+    <a href="{{ url_for('marcadores.eliminar', id_marcador=m['id']) }}" onclick="return confirm('¿Eliminar este marcador?');">🗑️</a>
+</div>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No hay marcadores todavía.</p>
+    {% endfor %}
+{% endblock %}

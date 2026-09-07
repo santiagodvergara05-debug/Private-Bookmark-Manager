@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block titulo %}Editar carpeta — PBM{% endblock %}
+{% block contenido %}
+    <div class="nav-volver">
+        <a href="{{ url_for('marcadores.home') }}" class="btn-nav">⬅️ Volver a Mis Marcadores</a>
+    </div>
+
+    <h1>📁 Renombrar carpeta</h1>
+
+    <div class="tarjeta-config" style="max-width: 420px;">
+        <form method="POST" class="form-config-panel">
+            <div class="campo-grupo">
+                <label for="nombre">Nombre de la carpeta:</label>
+                <input type="text" id="nombre" name="nombre" value="{{ carpeta['nombre'] }}" required>
+            </div>
+
+            <div class="form-acciones-edicion">
+                <button type="submit" class="btn-primario">💾 Guardar cambios</button>
+                <a href="{{ url_for('marcadores.home') }}" class="btn-nav">Cancelar</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}
