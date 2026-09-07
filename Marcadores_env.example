@@ -11,31 +11,31 @@ SISTEMA_INICIALIZADO='true'
 
 # --- SEGURIDAD Y CRIPTOGRAFÍA ---
 # Clave para cifrar sesiones y cookies web (Flask)
-SECRET_KEY='tu_clave_secreta_hex_256_bits'
+SECRET_KEY=
 
 # Clave maestra para acceder a configuraciones críticas y borrado
-MASTER_KEY='tu_master_key_hex_256_bits'
+MASTER_KEY=
 
 # Contraseña de acceso a la interfaz web (por defecto: cambiame)
-APP_PASSWORD='cambiame'
+APP_PASSWORD=
 
 # --- PREFERENCIAS DE INTERFAZ (UI) ---
 # Mostrar iconos favicon obtenidos de sitios web ('true' o 'false')
-MOSTRAR_FAVICONS='true'
+MOSTRAR_FAVICONS=
 
 # Abrir los enlaces en una pestaña nueva del navegador ('true' o 'false')
-ABRIR_NUEVA_PESTANA='true'
+ABRIR_NUEVA_PESTANA=
 
 # Activar la interfaz en modo oscuro ('true' o 'false')
-MODO_OSCURO='true'
+MODO_OSCURO=
 
 # --- ENTORNO DE RED Y SERVIDOR ---
 # Modo depuración de Flask ('true' para desarrollo, 'false' para producción)
 # IMPORTANTE: Requerido en 'true' para operar CLI_Chaos.py
-FLASK_DEBUG='false'
+FLASK_DEBUG=
 
 # Registro detallado de peticiones HTTP en consola ('true' o 'false')
-LOG_MODE='false'
+LOG_MODE=
 
 # Puerto de enlace HTTP local (predeterminado: 5050)
 PORT='5050'
