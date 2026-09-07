@@ -22,15 +22,15 @@ Gestor de marcadores privado, ligero y altamente resiliente diseñado para opera
 ---
 ## Funcionalidades del Sistema
 
-* **Gestión de Marcadores y Carpetas:** Organización estructurada de enlaces web agrupados por categorías o carpetas personalizadas.
+* **Gestión de Marcadores y Carpetas:** Organización estructurada de enlaces web agrupados por carpetas personalizadas.
 * **Seguimiento de Progreso Numérico:** Contador manual integrado para registrar el avance de lectura o consumo en enlaces específicos (ideal para mangas, cómics, novelas ligeras, series o cursos).
 * **Notas Contextuales:** Asignación de recordatorios y notas descriptivas junto al enlace para complementar la información sin necesidad de abrirlo.
 * **Autenticación y Seguridad de Acceso:**
-  * Servidor web protegido por inicio de sesión (credencial inicial de fábrica: `cambiame`, informada en la consola durante el boot inicial).
+  * Servidor web protegido por inicio de sesión (credencial inicial de fábrica: informada en la consola durante el boot inicial).
   * **Métodos para cambiar la contraseña:**
     1. **Desde la consola administrativa:** Ejecutando `CLI_admin.exe` (o `python CLI_admin.py`).
     2. **Desde el archivo de configuración:** Editando `APP_PASSWORD` en `.env` y reiniciando el servidor.
-    3. **Desde la interfaz web:** En la sección **Configuración**, desbloqueando los ajustes críticos mediante la `MASTER_KEY` (llave criptográfica de 256 bits consultable en `.env` o regenerable mediante el CLI).
+    3. **Desde la interfaz web:** En la sección **Configuración**, desbloqueando los ajustes críticos mediante la `MASTER_KEY` (llave criptográfica de 256 bits consultable en `.env` y regenerable mediante el CLI).
 
 ---
 
