@@ -7,3 +7,7 @@ ultimo_backup.txt
 silenciar_backup.txt
 backup_marcadores*.json
 *.corrupt*
+# Artefactos de PyInstaller
+build/
+dist/
+*.spec

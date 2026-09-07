@@ -17,12 +17,12 @@ DURACION_DESBLOQUEO = 120  # segundos (2 minutos)
 RUTA_ULTIMO_BACKUP = "ultimo_backup.txt"
 RUTA_SILENCIAR_BACKUP = "silenciar_backup.txt"
 
-#SEGUNDOS_AVISO_BACKUP = 10 * 24 * 60 * 60   # Avisa si pasaron 10 días desde el último backup
-#SEGUNDOS_SILENCIO_BACKUP = 1 * 24 * 60 * 60  # Pospone el cartel por 1 día (24 horas)
+SEGUNDOS_AVISO_BACKUP = 10 * 24 * 60 * 60   # Avisa si pasaron 10 días desde el último backup
+SEGUNDOS_SILENCIO_BACKUP = 1 * 24 * 60 * 60  # Pospone el cartel por 1 día (24 horas)
 
 #Tiempo de testeo
-SEGUNDOS_AVISO_BACKUP = 60
-SEGUNDOS_SILENCIO_BACKUP = 60
+#SEGUNDOS_AVISO_BACKUP = 60
+#SEGUNDOS_SILENCIO_BACKUP = 60
 
 RUTA_ENV = ".env"
 

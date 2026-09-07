@@ -10,6 +10,8 @@ from dotenv import load_dotenv
 from flask import Flask
 import database
 from routes import marcadores_bp, RUTA_ULTIMO_BACKUP
+import webbrowser
+import threading
 
 ES_EXE = getattr(sys, "frozen", False)
 if ES_EXE:
@@ -291,6 +293,9 @@ if __name__ == "__main__":
         print("-" * 65 + "\n")
         print(">>> EL SERVIDOR ESTA OPERATIVO <<<")
         print("-" * 65 + "\n")
+
+    if ES_EXE and not es_reloader:
+        threading.Timer(1.5, lambda: webbrowser.open(f"http://127.0.0.1:{port}")).start()
 
     app.run(
         host=host,
