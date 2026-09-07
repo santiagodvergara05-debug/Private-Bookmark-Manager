@@ -75,7 +75,7 @@ Iniciar automáticamente con scripts:
 --> En Linux / Raspberry Pi: ejecuta chmod +x start.sh && ./start.sh
 
 Inicio manual alternativo:
-
+```
 python -m venv .venv
 # En Windows:
 .venv\Scripts\activate
@@ -84,11 +84,11 @@ source .venv/bin/activate
 
 pip install -r requirements.txt
 python app.py
-
+```
 Configuración del Entorno (.env)
 El archivo .env se autogenera en el primer arranque, pero puede ajustarse manualmente o mediante CLI_admin:
 
-# Bandera de control de inicio
+```# Bandera de control de inicio
 SISTEMA_INICIALIZADO='true'
 
 # Criptografía y acceso
@@ -106,7 +106,7 @@ PORT='5050'
 HOST='127.0.0.1'       # Usar '0.0.0.0' para habilitar acceso en toda la LAN
 FLASK_DEBUG='false'    # 'true' habilita herramientas de caos y desarrollo
 LOG_MODE='false'       # 'true' activa telemetría de solicitudes en consola
-
+```
 
 Herramientas Administrativas
 Panel de Administración (CLI_admin.py)
@@ -129,10 +129,10 @@ Compilación a Ejecutables (.exe)
 Para empaquetar la solución sin dependencias externas mediante PyInstaller:
 
 # Compilar servidor principal
-pyinstaller --noconfirm --onefile --console --name "PBMPrivateBookmarkManager" --add-data "templates;templates" --add-data "static;static" app.py
+```pyinstaller --noconfirm --onefile --console --name "PBMPrivateBookmarkManager" --add-data "templates;templates" --add-data "static;static" app.py```
 
 # Compilar consola administrativa
-pyinstaller --noconfirm --onefile --console --name "CLI_admin" CLI_admin.py
+```pyinstaller --noconfirm --onefile --console --name "CLI_admin" CLI_admin.py```
 
 Licencia
 Distribuido bajo la Licencia GNU GPLv3. Consulta el archivo LICENSE para más información.
