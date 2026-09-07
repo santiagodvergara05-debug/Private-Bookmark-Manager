@@ -9,11 +9,11 @@ Gestor de marcadores privado, ligero y altamente resiliente diseñado para opera
     <tr>
       <td align="center" valign="bottom">
         <b>Vista Escritorio</b><br><br>
-        <img width="560" alt="Vista Escritorio" src="[https://github.com/user-attachments/assets/9ca053fc-81ef-4c3c-b433-0ddcf1f40bec](https://github.com/user-attachments/assets/9ca053fc-81ef-4c3c-b433-0ddcf1f40bec)" />
+        <img width="601" height="475" alt="image" src="https://github.com/user-attachments/assets/9f50cf15-be21-446f-9c7c-077235e62021" />
       </td>
       <td align="center" valign="bottom">
         <b>Diseño Móvil (LAN / Responsive)</b><br><br>
-        <img width="260" alt="Vista Móvil" src="[https://github.com/user-attachments/assets/8c679649-b932-445a-bde8-c6525fb38667](https://github.com/user-attachments/assets/8c679649-b932-445a-bde8-c6525fb38667)" />
+        <img width="540" height="1089" alt="image" src="https://github.com/user-attachments/assets/86d19773-14a8-4f10-bac8-ca14a1557b20" />
       </td>
     </tr>
   </table>
