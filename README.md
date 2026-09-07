@@ -1,0 +1,118 @@
+# Private Bookmark Manager (PBM)
+
+Gestor de marcadores privado, ligero y altamente resiliente diseñado para operar como servidor local o en red de área local (LAN). Incluye un gestor de arranque defensivo (*bootloader*) con autorrecuperación de fallos, auditoría de integridad estructural para SQLite y herramientas administrativas desacopladas por línea de comandos.
+
+---
+
+## Características Principales
+
+* **Organización Jerárquica:** Creación de carpetas anidadas, asignación de notas descriptivas y contadores de progreso manual (ideal para lecturas o seguimiento).
+* **Diseño de Interfaz:** Soporte nativo para modo oscuro/claro, alternancia de favicons automáticos y apertura configurable en nueva pestaña.
+* **Bootloader Defensivo:**
+  * Auto-aprovisionamiento del entorno (`.env`) y generación de llaves criptográficas de 256 bits (`MASTER_KEY`, `SECRET_KEY`).
+  * Comprobación de integridad estructural en frío (`PRAGMA integrity_check`).
+  * Aislamiento automático en cuarentena (`.corrupt_*`) ante corrupciones de base de datos y reconstrucción en limpio sin interrupción del servicio.
+* **Consola Administrativa (`CLI_admin`):** Gestión fuera de banda de contraseñas, rotación criptográfica, alcance de red y restauración de fábrica.
+* **Herramienta de Caos (`CLI_Chaos`):** Inyector de fallos binarios para simular caídas de disco y borrados accidentales (bloqueado por hardware/software si el modo depuración está desactivado).
+* **Portabilidad:** Diseñado para correr en servidores Linux/Raspberry Pi o compilarse como binario autónomo para Windows (`.exe`) sin requerir Python instalado.
+
+---
+
+## Arquitectura del Proyecto
+
+| Archivo | Rol | Descripción |
+| :--- | :--- | :--- |
+| `app.py` | Núcleo / Servidor | Bootloader de arranque, verificación de entorno y servidor web Flask. |
+| `database.py` | Almacenamiento | Controlador SQLite relacional para marcadores, carpetas y esquemas. |
+| `routes.py` | Enrutamiento | Lógica de endpoints HTTP, autenticación de sesión y gestión de vistas. |
+| `CLI_admin.py` | Operaciones | Panel de terminal para rotación de credenciales y ajustes del sistema. |
+| `CLI_Chaos.py` | QA / Stress Test | Herramienta de inyección de corrupción binaria y validación de resiliencia. |
+| `Marcadores_env.example` | Plantilla | Estructura base documentada para el archivo `.env`. |
+
+---
+
+## Puesta en Marcha
+
+### Opción 1: Ejecutables Independientes (Sin Python)
+
+1. Descarga el paquete distribuible o compila los ejecutables.
+2. Ejecuta `MarcadoresPrivados.exe`. El sistema creará los archivos `marcadores.db` y `.env` automáticamente y abrirá el navegador en `http://127.0.0.1:5050`.
+3. Contraseña predeterminada de fábrica: `cambiame`.
+4. Para realizar tareas de mantenimiento, ejecuta `CLI_admin.exe` en la misma carpeta.
+
+### Opción 2: Ejecución desde Código Fuente
+
+**Requisitos:** Python 3.10 o superior.
+
+1. **Clonar el repositorio:**
+   ```bash
+   git clone [https://github.com/tu-usuario/Private-Bookmark-Manager.git](https://github.com/tu-usuario/Private-Bookmark-Manager.git)
+   cd Private-Bookmark-Manager
+
+Iniciar automáticamente:
+
+--> En Windows: ejecuta start.bat
+
+--> En Linux / Raspberry Pi: ejecuta chmod +x start.sh && ./start.sh
+
+Inicio manual (Opcional):
+
+python -m venv .venv
+# Windows:
+.venv\Scripts\activate
+# Linux:
+source .venv/bin/activate
+
+pip install -r requirements.txt
+python app.py
+
+Configuración del Entorno (.env)
+El archivo .env se autogenera en el primer arranque, pero puede ajustarse manualmente o mediante CLI_admin.py:
+
+# Bandera de control de inicio
+SISTEMA_INICIALIZADO='true'
+
+# Criptografía y acceso
+SECRET_KEY='llave_sesion_flask_hex_256'
+MASTER_KEY='llave_maestra_hex_256'
+APP_PASSWORD='tu_contraseña_aqui'
+
+# Red y Servidor
+PORT='5050'
+HOST='127.0.0.1'       # Usar '0.0.0.0' para habilitar acceso en toda la LAN
+FLASK_DEBUG='false'    # 'true' habilita herramientas de caos y desarrollo
+LOG_MODE='false'       # 'true' activa telemetría de solicitudes en consola
+
+Herramientas Administrativas
+Panel de Administración (CLI_admin.py)
+Permite operar el sistema en paralelo mientras el servidor está activo:
+
+Seguridad: Rotación atómica de MASTER_KEY y SECRET_KEY, cambio de contraseña web.
+
+Red: Cambio dinámico de puertos y alternancia entre interfaz Local (127.0.0.1) o Global (0.0.0.0).
+
+Mantenimiento: Restauración completa de fábrica con confirmación explícita (BORRAR).
+
+Suite de Caos (CLI_Chaos.py)
+Utilidad reservada para validación y desarrollo:
+
+Requiere estrictamente FLASK_DEBUG='true' en .env para ejecutarse.
+
+Permite corromper cabeceras de SQLite, dañar bloques internos de datos o simular eliminaciones accidentales de disco para evaluar las rutinas de rescate del bootloader.
+
+Compilación a Ejecutables (.exe)
+Para empaquetar la solución sin dependencias externas mediante PyInstaller:
+
+Bash
+
+Compilación a Ejecutables (.exe)
+Para empaquetar la solución sin dependencias externas mediante PyInstaller:
+
+# Compilar servidor principal
+pyinstaller --noconfirm --onefile --console --name "PBM—PrivateBookmarkManager" --add-data "templates;templates" --add-data "static;static" app.py
+
+# Compilar consola administrativa
+pyinstaller --noconfirm --onefile --console --name "CLI_admin" CLI_admin.py
+
+Licencia
+Distribuido bajo la Licencia GNU GPLv3. Consulta el archivo LICENSE para más información.
