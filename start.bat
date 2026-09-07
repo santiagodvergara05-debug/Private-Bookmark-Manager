@@ -6,7 +6,7 @@ cd /d "%~dp0"
 
 :: 1. Crear entorno virtual si no existe
 if not exist ".venv" (
-    echo [*] Creando entorno virtual (.venv)...
+    echo [*] Creando entorno virtual .venv...
     python -m venv .venv
 )
 
