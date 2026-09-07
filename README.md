@@ -4,16 +4,34 @@ Gestor de marcadores privado, ligero y altamente resiliente diseñado para opera
 
 ---
 
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" valign="bottom">
+        <b>Vista Escritorio</b><br><br>
+        <img width="560" alt="Vista Escritorio" src="[https://github.com/user-attachments/assets/9ca053fc-81ef-4c3c-b433-0ddcf1f40bec](https://github.com/user-attachments/assets/9ca053fc-81ef-4c3c-b433-0ddcf1f40bec)" />
+      </td>
+      <td align="center" valign="bottom">
+        <b>Diseño Móvil (LAN / Responsive)</b><br><br>
+        <img width="260" alt="Vista Móvil" src="[https://github.com/user-attachments/assets/8c679649-b932-445a-bde8-c6525fb38667](https://github.com/user-attachments/assets/8c679649-b932-445a-bde8-c6525fb38667)" />
+      </td>
+    </tr>
+  </table>
+</div>
+
+---
+
 ## Características Principales
 
-* **Organización Jerárquica:** Creación de carpetas anidadas, asignación de notas descriptivas y contadores de progreso manual (ideal para lecturas o seguimiento).
-* **Diseño de Interfaz:** Soporte nativo para modo oscuro/claro, alternancia de favicons automáticos y apertura configurable en nueva pestaña.
+* **Interfaz Adaptable (Responsive):** Optimizada para uso cómodo en teléfonos, tablets o PC al acceder desde la red local (`HOST='0.0.0.0'`).
+* **Organización Jerárquica:** Creación de carpetas anidadas, asignación de notas descriptivas y contadores de progreso manual (seguimiento de lecturas, cómics o cursos).
+* **Personalización Visual:** Soporte nativo para modo oscuro/claro, alternancia de favicons automáticos y apertura configurable en nueva pestaña.
 * **Bootloader Defensivo:**
   * Auto-aprovisionamiento del entorno (`.env`) y generación de llaves criptográficas de 256 bits (`MASTER_KEY`, `SECRET_KEY`).
   * Comprobación de integridad estructural en frío (`PRAGMA integrity_check`).
   * Aislamiento automático en cuarentena (`.corrupt_*`) ante corrupciones de base de datos y reconstrucción en limpio sin interrupción del servicio.
 * **Consola Administrativa (`CLI_admin`):** Gestión fuera de banda de contraseñas, rotación criptográfica, alcance de red y restauración de fábrica.
-* **Herramienta de Caos (`CLI_Chaos`):** Inyector de fallos binarios para simular caídas de disco y borrados accidentales (bloqueado por hardware/software si el modo depuración está desactivado).
+* **Herramienta de Caos (`CLI_Chaos`):** Inyector de fallos binarios para simular caídas de disco y borrados accidentales (bloqueado por seguridad si el modo depuración está desactivado).
 * **Portabilidad:** Diseñado para correr en servidores Linux/Raspberry Pi o compilarse como binario autónomo para Windows (`.exe`) sin requerir Python instalado.
 
 ---
@@ -36,9 +54,9 @@ Gestor de marcadores privado, ligero y altamente resiliente diseñado para opera
 ### Opción 1: Ejecutables Independientes (Sin Python)
 
 1. Descarga el paquete distribuible o compila los ejecutables.
-2. Ejecuta `MarcadoresPrivados.exe`. El sistema creará los archivos `marcadores.db` y `.env` automáticamente y abrirá el navegador en `http://127.0.0.1:5050`.
+2. Ejecuta `MarcadoresPrivados.exe`. El sistema creará los archivos `marcadores.db` y `.env` automáticamente y abrirá el navegador en `[http://127.0.0.1:5050](http://127.0.0.1:5050)`.
 3. Contraseña predeterminada de fábrica: `cambiame`.
-4. Para realizar tareas de mantenimiento, ejecuta `CLI_admin.exe` en la misma carpeta.
+4. Para tareas de mantenimiento o rotación de credenciales, ejecuta `CLI_admin.exe` en la misma carpeta.
 
 ### Opción 2: Ejecución desde Código Fuente
 
@@ -46,28 +64,29 @@ Gestor de marcadores privado, ligero y altamente resiliente diseñado para opera
 
 1. **Clonar el repositorio:**
    ```bash
-   git clone [https://github.com/tu-usuario/Private-Bookmark-Manager.git](https://github.com/tu-usuario/Private-Bookmark-Manager.git)
+   git clone https://github.com/santiagodvergara05-debug/Private-Bookmark-Manager.git
    cd Private-Bookmark-Manager
 
-Iniciar automáticamente:
+
+Iniciar automáticamente con scripts:
 
 --> En Windows: ejecuta start.bat
 
 --> En Linux / Raspberry Pi: ejecuta chmod +x start.sh && ./start.sh
 
-Inicio manual (Opcional):
+Inicio manual alternativo:
 
 python -m venv .venv
-# Windows:
+# En Windows:
 .venv\Scripts\activate
-# Linux:
+# En Linux:
 source .venv/bin/activate
 
 pip install -r requirements.txt
 python app.py
 
 Configuración del Entorno (.env)
-El archivo .env se autogenera en el primer arranque, pero puede ajustarse manualmente o mediante CLI_admin.py:
+El archivo .env se autogenera en el primer arranque, pero puede ajustarse manualmente o mediante CLI_admin:
 
 # Bandera de control de inicio
 SISTEMA_INICIALIZADO='true'
@@ -77,11 +96,17 @@ SECRET_KEY='llave_sesion_flask_hex_256'
 MASTER_KEY='llave_maestra_hex_256'
 APP_PASSWORD='tu_contraseña_aqui'
 
+# Parámetros de Interfaz
+MOSTRAR_FAVICONS=
+ABRIR_NUEVA_PESTANA=
+MODO_OSCURO=
+
 # Red y Servidor
 PORT='5050'
 HOST='127.0.0.1'       # Usar '0.0.0.0' para habilitar acceso en toda la LAN
 FLASK_DEBUG='false'    # 'true' habilita herramientas de caos y desarrollo
 LOG_MODE='false'       # 'true' activa telemetría de solicitudes en consola
+
 
 Herramientas Administrativas
 Panel de Administración (CLI_admin.py)
@@ -103,13 +128,8 @@ Permite corromper cabeceras de SQLite, dañar bloques internos de datos o simula
 Compilación a Ejecutables (.exe)
 Para empaquetar la solución sin dependencias externas mediante PyInstaller:
 
-Bash
-
-Compilación a Ejecutables (.exe)
-Para empaquetar la solución sin dependencias externas mediante PyInstaller:
-
 # Compilar servidor principal
-pyinstaller --noconfirm --onefile --console --name "PBM—PrivateBookmarkManager" --add-data "templates;templates" --add-data "static;static" app.py
+pyinstaller --noconfirm --onefile --console --name "PBMPrivateBookmarkManager" --add-data "templates;templates" --add-data "static;static" app.py
 
 # Compilar consola administrativa
 pyinstaller --noconfirm --onefile --console --name "CLI_admin" CLI_admin.py
