@@ -7,17 +7,20 @@
 
 # --- CONTROL DEL SISTEMA ---
 # Bandera de primer arranque ('true' indica que el sistema ya fue aprovisionado)
-SISTEMA_INICIALIZADO='true'
+SISTEMA_INICIALIZADO=
 
 # --- SEGURIDAD Y CRIPTOGRAFÍA ---
-# Clave para cifrar sesiones y cookies web (Flask)
+# Clave para cifrar sesiones y cookies web en Flask (64 caracteres hex)
 SECRET_KEY=
 
-# Clave maestra para acceder a configuraciones críticas y borrado
+# Clave maestra para acceder a configuraciones críticas y borrado (64 caracteres hex)
 MASTER_KEY=
 
-# Contraseña de acceso a la interfaz web (por defecto: cambiame)
+# Contraseña de acceso a la interfaz web (predeterminada al auto-generar: cambiame)
 APP_PASSWORD=
+
+# Estado del aviso inicial de credenciales ('false' lo muestra en /login, 'true' lo oculta)[cite: 3]
+CONTRASENA_MOSTRADA=
 
 # --- PREFERENCIAS DE INTERFAZ (UI) ---
 # Mostrar iconos favicon obtenidos de sitios web ('true' o 'false')
@@ -30,6 +33,9 @@ ABRIR_NUEVA_PESTANA=
 MODO_OSCURO=
 
 # --- ENTORNO DE RED Y SERVIDOR ---
+# Abrir automáticamente el navegador al iniciar la aplicación (solo para .exe) ('true' o 'false')
+AUTO_ABRIR_NAVEGADOR=
+
 # Modo depuración de Flask ('true' para desarrollo, 'false' para producción)
 # IMPORTANTE: Requerido en 'true' para operar CLI_Chaos.py
 FLASK_DEBUG=
@@ -37,8 +43,8 @@ FLASK_DEBUG=
 # Registro detallado de peticiones HTTP en consola ('true' o 'false')
 LOG_MODE=
 
-# Puerto de enlace HTTP local (predeterminado: 5050)
+# Puerto de enlace HTTP local (predeterminado: 5050)[cite: 4]
 PORT='5050'
 
-# Interfaz de escucha ('127.0.0.1' solo PC local, '0.0.0.0' para red LAN)
+# Interfaz de escucha ('127.0.0.1' solo PC local, '0.0.0.0' para red LAN)[cite: 4]
 HOST='127.0.0.1'
