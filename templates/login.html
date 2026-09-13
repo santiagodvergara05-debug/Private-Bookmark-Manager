@@ -5,10 +5,64 @@
 <div class="login-wrapper">
     <div class="login-card">
         <div class="login-header">
-    <div class="login-badge">PBM</div>
-    <h1 class="login-titulo">Marcadores Privados</h1>
-    <p class="login-creditos">v{{ app_version }}</p>
-</div>
+            <div class="login-badge">PBM</div>
+            <h1 class="login-titulo">Marcadores Privados</h1>
+            <p class="login-creditos">v{{ app_version }}</p>
+        </div>
+
+        {% if mostrar_contrasena_inicial %}
+            <div class="panel-credenciales-primer-uso">
+                <div class="panel-cabecera">
+                    <span class="panel-icono">🔐</span>
+                    <div>
+                        <strong>Credenciales iniciales generadas</strong>
+                        <p>Primer inicio detectado o visualización reactivada por el administrador.</p>
+                    </div>
+                </div>
+
+                <!-- Campo Contraseña -->
+                <div class="campo-credencial">
+                    <div class="campo-credencial-head">
+                        <label>Contraseña temporal</label>
+                        <span class="tag-insegura">Cambiar pronto</span>
+                    </div>
+                    <div class="bloque-copia">
+                        <code class="val-password" id="cred-password">{{ app_password_actual }}</code>
+                        <button type="button" class="btn-copia-moderno" data-target="cred-password">Copiar</button>
+                    </div>
+                </div>
+
+                <!-- Campo Master Key -->
+                <div class="campo-credencial">
+                    <div class="campo-credencial-head">
+                        <label>Llave maestra (Configuración crítica)</label>
+                    </div>
+                    <div class="bloque-copia bloque-copia-largo">
+                        <code class="val-masterkey" id="cred-masterkey">{{ master_key_actual }}</code>
+                        <button type="button" class="btn-copia-moderno" data-target="cred-masterkey">Copiar</button>
+                    </div>
+                </div>
+
+                <!-- Ayuda contextual compacta -->
+                <details class="panel-guia-cambio">
+    <summary>¿Dónde modificar estas credenciales?</summary>
+    <div class="guia-opciones">
+        <div class="opcion-item">
+            <span class="badge-tech">Web</span>
+            <span>Solo <b>contraseña de acceso</b> (desde Configuración).</span>
+        </div>
+        <div class="opcion-item">
+            <span class="badge-tech">CLI</span>
+            <span>Ambas claves (ejecutando <code>CLI_admin.py</code> o <code>.exe</code>).</span>
+        </div>
+        <div class="opcion-item">
+            <span class="badge-tech">ENV</span>
+            <span>Edición manual directa en el archivo <code>.env</code>.</span>
+        </div>
+    </div>
+</details>
+            </div>
+        {% endif %}
 
         <form method="POST" class="login-form">
             <div class="login-input-grupo">
@@ -29,11 +83,45 @@
                 <span>{{ error }}</span>
                 {% if mostrar_ayuda %}
                     <p class="login-ayuda">
-                        ¿Olvidaste la contraseña? Restablecela con: <code>python CLI_admin.py</code>
+                        ¿Olvidaste la contraseña? Restablécela con: <code>python CLI_admin.py</code>
                     </p>
                 {% endif %}
             </div>
         {% endif %}
     </div>
 </div>
+
+<script>
+function copiarTexto(texto) {
+    if (navigator.clipboard && window.isSecureContext) {
+        return navigator.clipboard.writeText(texto);
+    }
+    const area = document.createElement('textarea');
+    area.value = texto;
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand('copy');
+    document.body.removeChild(area);
+    return Promise.resolve();
+}
+
+// Corregido a .btn-copia-moderno
+document.querySelectorAll('.btn-copia-moderno').forEach(boton => {
+    boton.addEventListener('click', () => {
+        const targetId = boton.dataset.target;
+        const texto = document.getElementById(targetId).textContent.trim();
+        copiarTexto(texto).then(() => {
+            const original = boton.textContent;
+            boton.textContent = '✔ ¡Copiado!';
+            boton.classList.add('copiado');
+            setTimeout(() => { 
+                boton.textContent = original; 
+                boton.classList.remove('copiado');
+            }, 1300);
+        });
+    });
+});
+</script>
 {% endblock %}

@@ -1,12 +1,11 @@
 import os
 import sys
-import secrets
-from datetime import datetime
 import time
+import secrets
 import sqlite3
-from dotenv import set_key, dotenv_values
+from datetime import datetime
+from dotenv import load_dotenv, set_key
 
-# Detección de ruta base (compatible con script y .exe)
 ES_EXE = getattr(sys, "frozen", False)
 if ES_EXE:
     DIRECTORIO_RAIZ = os.path.dirname(sys.executable)
@@ -18,122 +17,115 @@ DB_PATH = os.path.join(DIRECTORIO_RAIZ, "marcadores.db")
 RUTA_ULTIMO_BACKUP = os.path.join(DIRECTORIO_RAIZ, "ultimo_backup.txt")
 RUTA_SILENCIAR_BACKUP = os.path.join(DIRECTORIO_RAIZ, "silenciar_backup.txt")
 
-def obtener_config():
+def limpiar_pantalla():
+    os.system("cls" if os.name == "nt" else "clear")
+
+def verificar_entorno():
+    """Bloquea el acceso al panel si no existe un archivo .env generado."""
     if not os.path.exists(ENV_PATH):
-        print("\n[-] Error: No se encontró el archivo .env.")
-        print("    Inicia 'app.py' primero para aprovisionar el sistema.")
-        return None
-    return dotenv_values(ENV_PATH)
+        limpiar_pantalla()
+        print("=" * 65)
+        print("    [!] ERROR: ARCHIVO DE CONFIGURACIÓN (.env) NO DETECTADO")
+        print("=" * 65)
+        print(" La consola administrativa no puede operar sin un entorno base.")
+        print(" Inicie el servidor principal (app.py o el ejecutable) al menos")
+        print(" una vez para aprovisionar las claves e inicializar el sistema.")
+        print("=" * 65)
+        input("\nPresione ENTER para salir...")
+        sys.exit(1)
 
-def cambiar_valor(clave, nuevo_valor, mensaje_exito):
-    set_key(ENV_PATH, clave, nuevo_valor)
-    print(f"\n[+] {mensaje_exito}: {nuevo_valor}")
-
-def obtener_conteo_db():
+def obtener_resumen_db():
     if not os.path.exists(DB_PATH):
-        return "No creada", "No creada"
+        return "0 carpetas / 0 marcadores"
     try:
         conn = sqlite3.connect(DB_PATH)
         cur = conn.cursor()
         cur.execute("SELECT COUNT(*) FROM carpetas")
-        total_carpetas = cur.fetchone()[0]
+        n_carp = cur.fetchone()[0]
         cur.execute("SELECT COUNT(*) FROM marcadores")
-        total_marcadores = cur.fetchone()[0]
+        n_marc = cur.fetchone()[0]
         conn.close()
-        return str(total_carpetas), str(total_marcadores)
+        return f"{n_carp} carpetas / {n_marc} marcadores"
     except Exception:
-        return "Error", "Error"
+        return "DB inaccesible"
 
-def obtener_estado_backups():
-    ultimo_texto = "Nunca realizado"
+def obtener_info_backup():
     if os.path.exists(RUTA_ULTIMO_BACKUP):
         try:
-            with open(RUTA_ULTIMO_BACKUP, "r", encoding="utf-8") as f:
+            with open(RUTA_ULTIMO_BACKUP, "r") as f:
                 ts = float(f.read().strip())
-                ultimo_texto = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
-        except (ValueError, OSError):
-            ultimo_texto = "Dato corrupto"
+                return datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M")
+        except Exception:
+            return "Corrupto"
+    return "Nunca realizado"
 
-    silencio_texto = "Inactivo"
-    if os.path.exists(RUTA_SILENCIAR_BACKUP):
-        try:
-            with open(RUTA_SILENCIAR_BACKUP, "r", encoding="utf-8") as f:
-                ts = float(f.read().strip())
-                if time.time() < ts:
-                    silencio_texto = f"Hasta {datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')}"
-                else:
-                    silencio_texto = "Expirado"
-        except (ValueError, OSError):
-            silencio_texto = "Dato corrupto"
+def submenu_inspeccion(titulo, etiqueta, valor):
+    """Muestra la clave limpia con opciones de navegación rápida."""
+    limpiar_pantalla()
+    print("=" * 65)
+    print(f"             INSPECCIÓN DE SEGURIDAD :: {titulo.upper()}")
+    print("=" * 65)
+    print(f"\n {etiqueta}:")
+    print(f" \033[92m{valor}\033[0m" if sys.stdout.isatty() else f" {valor}")
+    print("\n" + "-" * 65)
+    print("  1. Volver al menú principal")
+    print("  2. Salir del programa")
+    print("=" * 65)
 
-    return ultimo_texto, silencio_texto
-
-def ejecutar_restauracion_fabrica():
-    print("\n" + "!" * 65)
-    print("                 ZONA DE PELIGRO :: RESTAURACIÓN DE FÁBRICA")
-    print("!" * 65)
-    print(" Esta acción eliminará de forma irreversible:")
-    print("   • Base de datos (marcadores.db) con todas las carpetas y enlaces")
-    print("   • Archivo de configuración (.env) y llaves maestras")
-    print("   • Registros de copias de seguridad (ultimo_backup.txt)")
-    print("   • Recordatorios de silenciado (silenciar_backup.txt)")
-    print("-" * 65)
-    confirmacion = input(" Escribe 'BORRAR' para confirmar el restablecimiento completo: ").strip()
-
-    if confirmacion == "BORRAR":
-        archivos_a_borrar = [DB_PATH, ENV_PATH, RUTA_ULTIMO_BACKUP, RUTA_SILENCIAR_BACKUP]
-        print("\n[*] Eliminando archivos de entorno...")
-        for ruta in archivos_a_borrar:
-            nombre = os.path.basename(ruta)
-            if os.path.exists(ruta):
-                try:
-                    os.remove(ruta)
-                    print(f"  [+] Eliminado: {nombre}")
-                except Exception as e:
-                    print(f"  [-] Error al eliminar {nombre}: {e}")
-            else:
-                print(f"  [i] No presente: {nombre} (omitido)")
-        
-        print("\n[OK] Restauración completada.")
-        print("     Al volver a arrancar app.py, se ejecutará el bootloader desde cero.")
-        return True
-    else:
-        print("\n[!] Operación cancelada. No se aplicaron modificaciones.")
-        return False
-
-def menu_principal():
     while True:
-        cfg = obtener_config()
-        if cfg is None:
-            break
+        opc = input("Selecciona una opción [1-2]: ").strip()
+        if opc == "1":
+            return
+        elif opc == "2":
+            print("\nCerrando consola de administración...")
+            sys.exit(0)
+        else:
+            print("Opción inválida. Ingrese 1 o 2.")
 
-        host_desc = "127.0.0.1 (Local)" if cfg.get("HOST") == "127.0.0.1" else "0.0.0.0 (Red LAN)"
-        debug_desc = "Sí" if cfg.get("FLASK_DEBUG", "").lower() == "true" else "No"
-        log_desc = "Sí" if cfg.get("LOG_MODE", "").lower() == "true" else "No"
-        fav_desc = "Sí" if cfg.get("MOSTRAR_FAVICONS", "").lower() == "true" else "No"
-        dark_desc = "Sí" if cfg.get("MODO_OSCURO", "").lower() == "true" else "No"
-        tab_desc = "Sí" if cfg.get("ABRIR_NUEVA_PESTANA", "").lower() == "true" else "No"
+def pausar():
+    input("\nPresione ENTER para continuar...")
+
+def main():
+    while True:
+        verificar_entorno()
+        limpiar_pantalla()
+        load_dotenv(ENV_PATH, override=True)
+
+        host = os.environ.get("HOST", "127.0.0.1")
+        port = os.environ.get("PORT", "5050")
+        debug = "Sí" if os.environ.get("FLASK_DEBUG", "false").lower() == "true" else "No"
+        logs = "Sí" if os.environ.get("LOG_MODE", "false").lower() == "true" else "No"
+        oscuro = "Sí" if os.environ.get("MODO_OSCURO", "false").lower() == "true" else "No"
+        favicons = "Sí" if os.environ.get("MOSTRAR_FAVICONS", "true").lower() == "true" else "No"
+        tab = "Sí" if os.environ.get("ABRIR_NUEVA_PESTANA", "true").lower() == "true" else "No"
+        auto_nav = "Sí" if os.environ.get("AUTO_ABRIR_NAVEGADOR", "true").lower() == "true" else "No"
         
-        carpetas_db, marcadores_db = obtener_conteo_db()
-        ultimo_bkp, silencio_bkp = obtener_estado_backups()
+        # CONTRASENA_MOSTRADA='false' significa que el cartel inicial se muestra
+        cartel_login_activo = os.environ.get("CONTRASENA_MOSTRADA", "false").lower() == "false"
+        estado_cartel = "Activo (Visible)" if cartel_login_activo else "Inactivo (Oculto)"
 
-        print("\n" + "=" * 65)
+        tipo_red = "Global" if host == "0.0.0.0" else "Local"
+
+        print("=" * 65)
         print("                   PANEL DE CONTROL ADMINISTRATIVO")
         print("=" * 65)
-        print(f" Red: {host_desc:<20} | Puerto HTTP: {cfg.get('PORT', '5050')}")
-        print(f" DB: {carpetas_db} carpetas / {marcadores_db} marcadores | Debug: {debug_desc} | Logs: {log_desc}")
-        print(f" UI: [Oscuro: {dark_desc}] [Favicons: {fav_desc}] [Nueva pestaña: {tab_desc}]")
+        print(f" Red: {host} ({tipo_red})    | Puerto HTTP: {port}")
+        print(f" DB: {obtener_resumen_db()} | Debug: {debug} | Logs: {logs}")
+        print(f" UI: [Oscuro: {oscuro}] [Favicons: {favicons}] [Pestaña: {tab}] [Auto-Nav: {auto_nav}]")
         print("-" * 65)
-        print(f" Último Backup:    {ultimo_bkp}")
-        print(f" Silencio Backup:  {silencio_bkp}")
+        print(f" Último Backup:    {obtener_info_backup()}")
+        print(f" Cartel 1er Login: {estado_cartel}")
         print("-" * 65)
         print(" GESTIÓN DE SEGURIDAD")
+        print("   P. Inspeccionar contraseña web (APP_PASSWORD)")
         print("   M. Inspeccionar MASTER_KEY (para copiar)")
+        print("   C. Alternar Cartel de Credenciales en Login (Primer inicio)")
         print("   1. Cambiar contraseña web (APP_PASSWORD)")
         print("   2. Rotar MASTER_KEY (Criptografía 256 bits)")
         print("   3. Rotar SECRET_KEY (Invalida sesiones activas)")
         print("   4. Rotar ambas claves simultáneamente")
-        print("\n PREFERENCIAS VISUALES Y SISTEMA")
+        print("")
+        print(" PREFERENCIAS VISUALES Y SISTEMA")
         print("   5. Alternar Modo Oscuro (MODO_OSCURO)")
         print("   6. Alternar Iconos de Sitios (MOSTRAR_FAVICONS)")
         print("   7. Alternar Abrir Marcador en Nueva Pestaña (ABRIR_NUEVA_PESTANA)")
@@ -141,87 +133,142 @@ def menu_principal():
         print("   9. Alternar Telemetría de Servidor (LOG_MODE)")
         print("  10. Cambiar Puerto HTTP de Escucha (PORT)")
         print("  11. Alternar Alcance de Red (Local 127.0.0.1 <-> Global 0.0.0.0)")
-        print("\n MANTENIMIENTO")
+        print("  12. Alternar Auto-abrir Navegador al Iniciar (.exe)")
+        print("")
+        print(" MANTENIMIENTO")
         print("   R. Restaurar de fábrica (Eliminar DB, .env y backups)")
         print("   0. Salir")
         print("=" * 65)
 
-        opcion = input("Selecciona una opción: ").strip().upper()
+        opcion = input("Selecciona una opción: ").strip().lower()
 
-        if opcion == "M":
-            master_actual = cfg.get("MASTER_KEY")
-            if master_actual:
-                print("\n" + "-" * 65)
-                print(" MASTER_KEY CONFIGURADA:")
-                print(f" {master_actual}")
-                print("-" * 65)
-            else:
-                print("\n[-] No se localizó la variable MASTER_KEY en el .env.")
+        # Inspección de credenciales con submenú (Volver / Salir)
+        if opcion == "p":
+            pass_actual = os.environ.get("APP_PASSWORD", "cambiame")
+            submenu_inspeccion("Contraseña de Acceso Web", "APP_PASSWORD CONFIGURADA", pass_actual)
+
+        elif opcion == "m":
+            master_actual = os.environ.get("MASTER_KEY", "No configurada")
+            submenu_inspeccion("Llave Maestra", "MASTER_KEY CONFIGURADA", master_actual)
+
+        # Alternar cartel de credenciales en login
+        elif opcion == "c":
+            nuevo_estado = "true" if cartel_login_activo else "false"
+            set_key(ENV_PATH, "CONTRASENA_MOSTRADA", nuevo_estado)
+            os.environ["CONTRASENA_MOSTRADA"] = nuevo_estado
+            msg = "Desactivado (Ya no se mostrará)" if nuevo_estado == "true" else "Activado (Se mostrará en /login)"
+            print(f"\n[OK] Cartel de credenciales iniciales: {msg}")
+            pausar()
 
         elif opcion == "1":
-            nueva_pass = input("Ingresa la nueva contraseña web: ").strip()
+            nueva_pass = input("\nIngrese la nueva contraseña: ").strip()
             if nueva_pass:
-                cambiar_valor("APP_PASSWORD", nueva_pass, "Contraseña web actualizada")
+                set_key(ENV_PATH, "APP_PASSWORD", nueva_pass)
+                os.environ["APP_PASSWORD"] = nueva_pass
+                print("[OK] Contraseña web actualizada.")
             else:
-                print("[-] Contraseña no válida.")
+                print("[WARN] Operación cancelada: contraseña vacía.")
+            pausar()
 
         elif opcion == "2":
             nueva_master = secrets.token_hex(32)
-            cambiar_valor("MASTER_KEY", nueva_master, "Nueva MASTER_KEY generada")
+            set_key(ENV_PATH, "MASTER_KEY", nueva_master)
+            os.environ["MASTER_KEY"] = nueva_master
+            print(f"\n[OK] MASTER_KEY regenerada exitosamente.")
+            pausar()
 
         elif opcion == "3":
             nueva_secret = secrets.token_hex(32)
-            cambiar_valor("SECRET_KEY", nueva_secret, "Nueva SECRET_KEY generada")
+            set_key(ENV_PATH, "SECRET_KEY", nueva_secret)
+            os.environ["SECRET_KEY"] = nueva_secret
+            print(f"\n[OK] SECRET_KEY regenerada. Todas las sesiones web fueron invalidadas.")
+            pausar()
 
         elif opcion == "4":
-            nueva_secret = secrets.token_hex(32)
             nueva_master = secrets.token_hex(32)
-            set_key(ENV_PATH, "SECRET_KEY", nueva_secret)
+            nueva_secret = secrets.token_hex(32)
             set_key(ENV_PATH, "MASTER_KEY", nueva_master)
-            print("\n[+] Claves criptográficas rotadas correctamente:")
-            print(f"    SECRET_KEY: {nueva_secret}")
-            print(f"    MASTER_KEY: {nueva_master}")
+            set_key(ENV_PATH, "SECRET_KEY", nueva_secret)
+            os.environ["MASTER_KEY"] = nueva_master
+            os.environ["SECRET_KEY"] = nueva_secret
+            print(f"\n[OK] Llaves regeneradas con éxito.")
+            pausar()
 
         elif opcion == "5":
-            nuevo = "false" if cfg.get("MODO_OSCURO", "").lower() == "true" else "true"
-            cambiar_valor("MODO_OSCURO", nuevo, "Preferencia Modo Oscuro modificada")
+            val = "false" if oscuro == "Sí" else "true"
+            set_key(ENV_PATH, "MODO_OSCURO", val)
+            print(f"\n[OK] MODO_OSCURO configurado a: {val}")
+            pausar()
 
         elif opcion == "6":
-            nuevo = "false" if cfg.get("MOSTRAR_FAVICONS", "").lower() == "true" else "true"
-            cambiar_valor("MOSTRAR_FAVICONS", nuevo, "Carga de favicons modificada")
+            val = "false" if favicons == "Sí" else "true"
+            set_key(ENV_PATH, "MOSTRAR_FAVICONS", val)
+            print(f"\n[OK] MOSTRAR_FAVICONS configurado a: {val}")
+            pausar()
 
         elif opcion == "7":
-            nuevo = "false" if cfg.get("ABRIR_NUEVA_PESTANA", "").lower() == "true" else "true"
-            cambiar_valor("ABRIR_NUEVA_PESTANA", nuevo, "Apertura en nueva pestaña modificada")
+            val = "false" if tab == "Sí" else "true"
+            set_key(ENV_PATH, "ABRIR_NUEVA_PESTANA", val)
+            print(f"\n[OK] ABRIR_NUEVA_PESTANA configurado a: {val}")
+            pausar()
 
         elif opcion == "8":
-            nuevo = "false" if cfg.get("FLASK_DEBUG", "").lower() == "true" else "true"
-            cambiar_valor("FLASK_DEBUG", nuevo, "Modo Debug Flask modificado")
+            val = "false" if debug == "Sí" else "true"
+            set_key(ENV_PATH, "FLASK_DEBUG", val)
+            print(f"\n[OK] FLASK_DEBUG configurado a: {val}")
+            pausar()
 
         elif opcion == "9":
-            nuevo = "false" if cfg.get("LOG_MODE", "").lower() == "true" else "true"
-            cambiar_valor("LOG_MODE", nuevo, "Modo de logs modificado")
+            val = "false" if logs == "Sí" else "true"
+            set_key(ENV_PATH, "LOG_MODE", val)
+            print(f"\n[OK] LOG_MODE configurado a: {val}")
+            pausar()
 
         elif opcion == "10":
-            nuevo_puerto = input("Ingresa el nuevo puerto HTTP (ej. 5050): ").strip()
+            nuevo_puerto = input("\nIngrese el nuevo puerto (ej. 5050): ").strip()
             if nuevo_puerto.isdigit() and 1 <= int(nuevo_puerto) <= 65535:
-                cambiar_valor("PORT", nuevo_puerto, "Puerto HTTP actualizado")
+                set_key(ENV_PATH, "PORT", nuevo_puerto)
+                print(f"[OK] Puerto actualizado a: {nuevo_puerto}")
             else:
-                print("[-] Valor no válido. Debe ser un número de puerto entre 1 y 65535.")
+                print("[FAIL] Puerto inválido.")
+            pausar()
 
         elif opcion == "11":
-            nuevo_host = "0.0.0.0" if cfg.get("HOST") == "127.0.0.1" else "127.0.0.1"
-            cambiar_valor("HOST", nuevo_host, "Alcance de red modificado")
+            nuevo_host = "127.0.0.1" if host == "0.0.0.0" else "0.0.0.0"
+            set_key(ENV_PATH, "HOST", nuevo_host)
+            print(f"\n[OK] Escucha de red cambiada a: {nuevo_host}")
+            pausar()
 
-        elif opcion == "R":
-            if ejecutar_restauracion_fabrica():
-                break
+        elif opcion == "12":
+            val = "false" if auto_nav == "Sí" else "true"
+            set_key(ENV_PATH, "AUTO_ABRIR_NAVEGADOR", val)
+            os.environ["AUTO_ABRIR_NAVEGADOR"] = val
+            print(f"\n[OK] AUTO_ABRIR_NAVEGADOR configurado a: {val}")
+            pausar()
+
+        elif opcion == "r":
+            print("\n" + "!" * 65)
+            print(" PELIGRO: ESTA ACCIÓN ELIMINARÁ BASE DE DATOS, .ENV Y BACKUPS")
+            print("!" * 65)
+            conf = input("Escriba 'CONFIRMAR' para proceder: ").strip()
+            if conf == "CONFIRMAR":
+                for f in [DB_PATH, ENV_PATH, RUTA_ULTIMO_BACKUP, RUTA_SILENCIAR_BACKUP]:
+                    if os.path.exists(f):
+                        try:
+                            os.remove(f)
+                        except Exception:
+                            pass
+                print("\n[OK] Sistema restaurado a estado inicial.")
+                pausar()
+                sys.exit(0)
+            else:
+                print("\n[INFO] Restauración cancelada.")
+                pausar()
 
         elif opcion == "0":
-            print("\n[*] Saliendo del panel administrativo...")
+            print("\nSaliendo del Panel Administrativo...")
             break
-        else:
-            print("\n[-] Opción no válida. Ingresa una de las opciones del listado.")
 
 if __name__ == "__main__":
-    menu_principal()
+    verificar_entorno()
+    main()

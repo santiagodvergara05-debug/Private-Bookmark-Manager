@@ -10,6 +10,7 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 import time
 from version import VERSION
+import bookmarks_html
 
 INICIO_SERVIDOR = secrets.token_hex(8)  # se regenera en cada arranque real del proceso
 DURACION_DESBLOQUEO = 120  # segundos (2 minutos)
@@ -98,25 +99,44 @@ def requerir_login():
 
 @marcadores_bp.route("/login", methods=["GET", "POST"])
 def login():
+    mostrar_contrasena_inicial = os.environ.get("CONTRASENA_MOSTRADA", "false").lower() != "true"
+
     if request.method == "POST":
         if request.form.get("password") == os.environ.get("APP_PASSWORD"):
             session["autenticado"] = True
             session["intentos_fallidos"] = 0
             registrar_log(f"Inicio de sesión exitoso desde {request.remote_addr}")
+
+            if mostrar_contrasena_inicial:
+                set_key(RUTA_ENV, "CONTRASENA_MOSTRADA", "true")
+                os.environ["CONTRASENA_MOSTRADA"] = "true"
+                registrar_log("Primer inicio de sesión detectado: aviso de credenciales iniciales ocultado permanentemente")
+
             return redirect(url_for("marcadores.home"))
 
         session["intentos_fallidos"] = session.get("intentos_fallidos", 0) + 1
         registrar_log(f"Intento fallido de inicio de sesión desde {request.remote_addr} (intento #{session['intentos_fallidos']})")
-        
+
         if session["intentos_fallidos"] == 3:
             registrar_log(f"⚠️ Umbral alcanzado desde {request.remote_addr}: mostrada ayuda de recuperación en pantalla")
 
         return render_template(
             "login.html",
             error="Contraseña incorrecta",
-            mostrar_ayuda=session["intentos_fallidos"] >= 3
+            mostrar_ayuda=session["intentos_fallidos"] >= 3,
+            mostrar_contrasena_inicial=mostrar_contrasena_inicial,
+            app_password_actual=os.environ.get("APP_PASSWORD"),
+            master_key_actual=os.environ.get("MASTER_KEY")
         )
-    return render_template("login.html", error=None, mostrar_ayuda=False)
+
+    return render_template(
+        "login.html",
+        error=None,
+        mostrar_ayuda=False,
+        mostrar_contrasena_inicial=mostrar_contrasena_inicial,
+        app_password_actual=os.environ.get("APP_PASSWORD"),
+        master_key_actual=os.environ.get("MASTER_KEY")
+    )
 
 @marcadores_bp.route("/logout")
 def logout():
@@ -392,3 +412,28 @@ def progreso(id_marcador, accion):
     database.actualizar_progreso(id_marcador, delta)
     registrar_log(f"Progreso de marcador {id_marcador} ajustado ({accion})")
     return redirect(request.referrer or url_for("marcadores.home"))
+
+@marcadores_bp.route("/exportar_html")
+def exportar_html_ruta():
+    carpetas = database.obtener_todas_las_carpetas()
+    marcadores = database.obtener_todos_los_marcadores()
+    contenido = bookmarks_html.exportar_html(
+        [dict(c) for c in carpetas], [dict(m) for m in marcadores]
+    )
+    registrar_log("Exportación HTML de base de datos realizada")
+    return Response(
+        contenido,
+        mimetype="text/html",
+        headers={"Content-Disposition": "attachment; filename=backup_marcadores.html"}
+    )
+
+@marcadores_bp.route("/importar_html", methods=["POST"])
+def importar_html_ruta():
+    archivo = request.files.get("archivo")
+    if archivo:
+        contenido = archivo.read().decode("utf-8", errors="ignore")
+        carpetas_data, marcadores_data = bookmarks_html.importar_html(contenido)
+        database.importar_datos(carpetas_data, marcadores_data)
+        registrar_log(f"Importación HTML completada: {len(marcadores_data)} marcadores importados")
+    return redirect(url_for("marcadores.home"))
+

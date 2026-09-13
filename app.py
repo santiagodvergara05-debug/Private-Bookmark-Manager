@@ -6,7 +6,7 @@ import logging
 import socket
 import sqlite3
 from datetime import datetime
-from dotenv import load_dotenv
+from dotenv import load_dotenv, dotenv_values, set_key
 from flask import Flask
 import database
 from routes import marcadores_bp, RUTA_ULTIMO_BACKUP
@@ -78,6 +78,38 @@ def auditar_integridad_db(db_path):
     finally:
         if conn:
             conn.close()
+
+VALORES_PREDETERMINADOS = {
+    "SISTEMA_INICIALIZADO": "true",
+    "SECRET_KEY": lambda: secrets.token_hex(32),
+    "MASTER_KEY": lambda: secrets.token_hex(32),
+    "APP_PASSWORD": "cambiame",
+    "CONTRASENA_MOSTRADA": "false",
+    "MOSTRAR_FAVICONS": "true",
+    "ABRIR_NUEVA_PESTANA": "true",
+    "AUTO_ABRIR_NAVEGADOR": "true", 
+    "MODO_OSCURO": "false",
+    "FLASK_DEBUG": "false",
+    "LOG_MODE": "false",
+    "PORT": "5050",
+    "HOST": "127.0.0.1",
+}
+
+def reparar_env(ruta_env):
+    """
+    Verifica que existan todas las variables esperadas en el .env.
+    Las que falten se crean con su valor predeterminado (SECRET_KEY/MASTER_KEY
+    se generan al vuelo en vez de usar un literal). Devuelve la lista de
+    claves que tuvo que restaurar.
+    """
+    valores_actuales = dotenv_values(ruta_env) if os.path.exists(ruta_env) else {}
+    faltantes = []
+    for clave, valor_default in VALORES_PREDETERMINADOS.items():
+        if clave not in valores_actuales:
+            valor = valor_default() if callable(valor_default) else valor_default
+            set_key(ruta_env, clave, valor)
+            faltantes.append(clave)
+    return faltantes
 
 if __name__ == "__main__":
     es_reloader = os.environ.get("WERKZEUG_RUN_MAIN") == "true"
@@ -161,51 +193,21 @@ if __name__ == "__main__":
             database.inicializar_db()
             klog("ok", f"Base de datos verificada: {n_carp} carpetas y {n_marc} marcadores registrados.")
 
-        # 4. Archivo de configuración (.env)
-        if os.path.exists(ENV_PATH):
-            klog("ok", "Archivo .env cargado desde almacenamiento local.")
-        else:
+        # 4. Archivo de configuración (.env) – creación y reparación automática
+        if not os.path.exists(ENV_PATH):
             klog("warn", "Configuración .env no encontrada. Iniciando aprovisionamiento...")
-            with open(ENV_PATH, "w", encoding="utf-8") as f:
-                # Bandera de ciclo de vida
-                klog("init", "Registrando primer inicio (SISTEMA_INICIALIZADO='true')...")
-                f.write("SISTEMA_INICIALIZADO='true'\n")
+            open(ENV_PATH, "w", encoding="utf-8").close()
+        else:
+            klog("ok", "Archivo .env cargado desde almacenamiento local.")
 
-                # Criptografía
-                klog("init", "Generando clave de cifrado para cookies y sesiones web (SECRET_KEY)...")
-                f.write(f"SECRET_KEY='{secrets.token_hex(32)}'\n")
-                
-                klog("init", "Generando llave maestra para acceso a configuraciones críticas en la web (MASTER_KEY)...")
-                f.write(f"MASTER_KEY='{secrets.token_hex(32)}'\n")
-                
-                klog("init", "Estableciendo contraseña web temporal |cambiame|...")
-                f.write("APP_PASSWORD='cambiame'\n")
-                
-                # Visual
-                klog("init", "Configurando interfaz :: Carga de iconos (favicons)...")
-                f.write("MOSTRAR_FAVICONS='true'\n")
-                
-                klog("init", "Configurando interfaz :: Abrir marcadores en nueva pestaña...")
-                f.write("ABRIR_NUEVA_PESTANA='true'\n")
-                
-                klog("init", "Configurando interfaz :: Modo visual oscuro inhabilitado...")
-                f.write("MODO_OSCURO='false'\n")
-                
-                # Servidor y red
-                klog("init", "Configurando servidor :: Modo depuración inhabilitado (FLASK_DEBUG=false)...")
-                f.write("FLASK_DEBUG='false'\n")
-                
-                klog("init", "Configurando servidor :: Registro de peticiones inhabilitado (LOG_MODE=false)...")
-                f.write("LOG_MODE='false'\n")
-                
-                klog("init", "Configurando red :: Puerto predeterminado (PORT=5050, editable en web)...")
-                f.write("PORT='5050'\n")
-                
-                klog("init", "Configurando red :: Dirección de escucha local (HOST=127.0.0.1)...")
-                f.write("HOST='127.0.0.1'\n")
-                klog("info", "Configurando red :: Dirección de escucha local aprovisionada...")
+        faltantes = reparar_env(ENV_PATH)
+        for clave in faltantes:
+            klog("init", f"Variable faltante detectada: generando {clave} con su valor por defecto...")
 
-            klog("ok", "Archivo .env aprovisionado con llaves (MASTER_KEY, SECRET_KEY) y configuraciones iniciales.")
+        if faltantes:
+            klog("ok", f"Archivo .env reparado ({len(faltantes)} variable(s) restauradas).")
+        else:
+            klog("ok", "Archivo .env verificado: todas las variables presentes.")
 
         load_dotenv(ENV_PATH)
         app.secret_key = os.environ.get("SECRET_KEY")
@@ -237,16 +239,21 @@ if __name__ == "__main__":
     app.secret_key = os.environ.get("SECRET_KEY")
 
     if not es_reloader:
-        if os.environ.get("APP_PASSWORD") == "cambiame":
+        contrasena_ya_mostrada = os.environ.get("CONTRASENA_MOSTRADA", "false").lower() == "true"
+        if os.environ.get("APP_PASSWORD") == "cambiame" and not contrasena_ya_mostrada:
             print("\n" + "!" * 65)
             print(" [!] ALERTA CRÍTICA: Credencial de fábrica activa")
-            print(" [i] SU CONTRASEÑA DE INICIO DE SESIÓN ES: CAMBIAME")
+            print(" [i] SU CONTRASEÑA DE INICIO DE SESIÓN ES: cambiame")
             print(" [i] Se recomienda cambiarla inmediatamente para evitar accesos no autorizados.")
             print(" [i] puede usar uno de los siguientes métodos para cambiarla:")
             print("     1. desde la interfaz web")
             print("     2. desde una terminal ejecutando: python CLI_admin.py")
             print("     3. editando el archivo .env y reiniciando el servidor")
+            print(" [i] Este aviso no volverá a mostrarse en próximos arranques.")
             print("!" * 65)
+
+            set_key(ENV_PATH, "CONTRASENA_MOSTRADA", "true")
+            os.environ["CONTRASENA_MOSTRADA"] = "false"
 
         print("\n" + "-" * 65)
         print(" [i] CONSOLA ADMINISTRATIVA DISPONIBLE:")
@@ -278,13 +285,14 @@ if __name__ == "__main__":
                 s.close()
             except Exception:
                 pass
-
-            klog("ok", f"Servidor HTTP listo (Local):   http://127.0.0.1:{port} (Debug: {debug_mode})")
-            klog("ok", f"Servidor HTTP listo (Red LAN): http://{ip_lan}:{port} (Debug: {debug_mode})")
+            klog("info", f"Modo Debug: {debug_mode}")
+            klog("ok", f"Servidor HTTP listo (Local):   http://127.0.0.1:{port}")
+            klog("ok", f"Servidor HTTP listo (Red LAN): http://{ip_lan}:{port}")
             klog("info", f"Asseso global habilitado ahora puede acceder desde cualquier dispositivo en la misma red LAN.")
             klog("info", f"Asegúrese de que el puerto {port} esté abierto en su firewall para acceso LAN.")
         else:
-            klog("ok", f"Servidor HTTP enrutado en http://{host}:{port} (Debug: {debug_mode})")
+            klog("info", f"Modo Debug: {debug_mode}")
+            klog("ok", f"Servidor HTTP enrutado en http://{host}:{port}")
             klog("fail", f"Servidor HTTP (Red LAN): no disponible ")
             
 
@@ -295,6 +303,9 @@ if __name__ == "__main__":
         print("-" * 65 + "\n")
 
     if ES_EXE and not es_reloader:
+        auto_abrir = os.environ.get("AUTO_ABRIR_NAVEGADOR", "true").lower() == "true"
+        if auto_abrir:
+            threading.Timer(1.5, lambda: webbrowser.open(f"http://127.0.0.1:{port}")).start()
         threading.Timer(1.5, lambda: webbrowser.open(f"http://127.0.0.1:{port}")).start()
 
     app.run(

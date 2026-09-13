@@ -119,20 +119,28 @@
     <!-- Tarjeta: Copias de Seguridad -->
     <div class="tarjeta-config">
         <h3 class="tarjeta-titulo">💾 Copia de Seguridad</h3>
-        <p class="tarjeta-desc">Exportá tus marcadores y carpetas a formato JSON o restauralos desde un backup.</p>
-        
+        <p class="tarjeta-desc">Exportá tus marcadores y carpetas a JSON (formato completo) o HTML (compatible con navegadores).</p>
+
         <div class="fila-backup">
-            <a href="{{ url_for('marcadores.exportar') }}" class="btn-nav">⬇️ Descargar Backup (JSON)</a>
-            
+            <a href="{{ url_for('marcadores.exportar') }}" class="btn-nav">⬇️ Backup JSON</a>
+            <a href="{{ url_for('marcadores.exportar_html_ruta') }}" class="btn-nav">⬇️ Backup HTML</a>
+        </div>
+
+        <div class="fila-backup" style="margin-top: 10px;">
             <form method="POST" action="{{ url_for('marcadores.importar') }}" enctype="multipart/form-data" class="form-en-linea" style="margin:0;">
-                <input type="file" id="input-backup" name="archivo" accept=".json" required>
-                <button type="submit" class="btn-secundario">⬆️ Restaurar Backup</button>
+                <input type="file" class="input-restaurar" name="archivo" accept=".json" required>
+                <button type="submit" class="btn-secundario">⬆️ Restaurar JSON</button>
+            </form>
+
+            <form method="POST" action="{{ url_for('marcadores.importar_html_ruta') }}" enctype="multipart/form-data" class="form-en-linea" style="margin:0;">
+                <input type="file" class="input-restaurar" name="archivo" accept=".html,.htm" required>
+                <button type="submit" class="btn-secundario">⬆️ Restaurar HTML</button>
             </form>
         </div>
 
         <!-- Cartel dinámico que aparece solo cuando se elige un archivo -->
         <div id="aviso-archivo" class="aviso-archivo-adjuntado" style="display: none;">
-            📄 Archivo seleccionado: <b id="nombre-archivo"></b> — Listo. Ahora tocá <b>Restaurar Backup</b>.
+            📄 Archivo seleccionado: <b id="nombre-archivo"></b> — Listo. Ahora tocá el botón de Restaurar correspondiente.
         </div>
     </div>
 
@@ -161,13 +169,13 @@
     </div>
 
     <script>
-        // Detector visual para cuando se adjunta un backup JSON
-        const inputBackup = document.getElementById('input-backup');
+        // Detector visual para cuando se adjunta un backup (JSON o HTML)
+        const inputsBackup = document.querySelectorAll('.input-restaurar');
         const avisoArchivo = document.getElementById('aviso-archivo');
         const nombreArchivo = document.getElementById('nombre-archivo');
 
-        if (inputBackup) {
-            inputBackup.addEventListener('change', function() {
+        inputsBackup.forEach(input => {
+            input.addEventListener('change', function() {
                 if (this.files && this.files.length > 0) {
                     nombreArchivo.textContent = this.files[0].name;
                     avisoArchivo.style.display = 'block';
@@ -175,7 +183,7 @@
                     avisoArchivo.style.display = 'none';
                 }
             });
-        }
+        });
 
         // Contador regresivo de desbloqueo crítico (solo si el elemento existe en pantalla)
         const elementoTexto = document.getElementById("texto-contador");

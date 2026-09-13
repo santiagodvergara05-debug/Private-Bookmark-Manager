@@ -725,7 +725,7 @@ body.oscuro textarea {
     border-radius: 12px;
     padding: 35px 30px;
     width: 100%;
-    max-width: 380px;
+    max-width: 460px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
     box-sizing: border-box;
 }
@@ -829,4 +829,202 @@ body.oscuro .login-input-grupo input {
 
 body.oscuro .login-ayuda code {
     background: rgba(255, 255, 255, 0.1);
+}
+
+
+
+/* --- Panel de Primer Arranque y Credenciales --- */
+.panel-credenciales-primer-uso {
+    background: #fffdf5;
+    border: 1px solid #f6d8a7;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+body.oscuro .panel-credenciales-primer-uso {
+    background: #231f17;
+    border-color: #5c4314;
+}
+
+.panel-cabecera {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin-bottom: 14px;
+}
+
+.panel-icono {
+    font-size: 1.3rem;
+    line-height: 1;
+}
+
+.panel-cabecera strong {
+    display: block;
+    color: #92400e;
+    font-size: 0.95rem;
+}
+
+body.oscuro .panel-cabecera strong {
+    color: #fbbf24;
+}
+
+.panel-cabecera p {
+    margin: 3px 0 0;
+    font-size: 0.8rem;
+    color: #a16207;
+}
+
+body.oscuro .panel-cabecera p {
+    color: #d97706;
+}
+
+/* Campos de credenciales */
+.campo-credencial {
+    margin-bottom: 12px;
+}
+
+.campo-credencial-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.campo-credencial-head label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #6b7280;
+    letter-spacing: 0.04em;
+}
+
+.tag-insegura {
+    background: #fee2e2;
+    color: #b91c1c;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+
+.bloque-copia {
+    display: flex;
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 5px 6px 5px 10px;
+    gap: 8px;
+}
+
+body.oscuro .bloque-copia {
+    background: #2b2b2b;
+    border-color: #444;
+}
+
+.bloque-copia code {
+    flex: 1;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    background: transparent;
+    padding: 0;
+    word-break: break-all;
+}
+
+.val-password {
+    color: #dc2626 !important;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.val-masterkey {
+    font-size: 0.74rem !important;
+    color: #4b5563 !important;
+    line-height: 1.35;
+}
+
+body.oscuro .val-masterkey {
+    color: #cbd5e1 !important;
+}
+
+.btn-copia-moderno {
+    background: #3d5a80;
+    color: #ffffff;
+    border: none;
+    border-radius: 5px;
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.2s ease;
+}
+
+.btn-copia-moderno:hover {
+    background: #2c4361;
+}
+
+.btn-copia-moderno.copiado {
+    background: #15803d !important;
+}
+
+/* Selector desplegable de ayuda */
+.panel-guia-cambio {
+    margin-top: 10px;
+    border-top: 1px dashed #f0cc8a;
+    padding-top: 10px;
+}
+
+body.oscuro .panel-guia-cambio {
+    border-top-color: #5c4314;
+}
+
+.panel-guia-cambio summary {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #92400e;
+    cursor: pointer;
+    outline: none;
+    user-select: none;
+}
+
+body.oscuro .panel-guia-cambio summary {
+    color: #f59e0b;
+}
+
+.guia-opciones {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+    padding-left: 4px;
+}
+
+.opcion-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.78rem;
+    color: #4b5563;
+}
+
+body.oscuro .opcion-item {
+    color: #bbb;
+}
+
+.badge-tech {
+    background: #e2e8f0;
+    color: #334155;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 3px;
+    min-width: 36px;
+    text-align: center;
+}
+
+body.oscuro .badge-tech {
+    background: #3a3a3a;
+    color: #ddd;
 }

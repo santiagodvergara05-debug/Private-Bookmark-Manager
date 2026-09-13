@@ -38,7 +38,9 @@
     </div>
 
     {% if carpeta_actual %}
-        <p><a href="{{ url_for('marcadores.ver_carpeta_ruta', carpeta_id=carpeta_actual['carpeta_padre_id']) if carpeta_actual['carpeta_padre_id'] else url_for('marcadores.home') }}">⬆️ Subir</a></p>
+        <div class="nav-volver">
+    <a href="{{ url_for('marcadores.home') }}" class="btn-nav">⬅️ Volver a Mis Marcadores</a>
+</div>
     {% endif %}
 
     <!-- ACCIONES DE CREACIÓN ARRIBA -->
