@@ -11,3 +11,6 @@ backup_marcadores*.json
 build/
 dist/
 *.spec
+# Backups y exportaciones de marcadores HTML
+bookmarks*.html
+backup_marcadores*.html
