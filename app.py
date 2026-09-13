@@ -193,8 +193,10 @@ if __name__ == "__main__":
             database.inicializar_db()
             klog("ok", f"Base de datos verificada: {n_carp} carpetas y {n_marc} marcadores registrados.")
 
-        # 4. Archivo de configuración (.env) – creación y reparación automática
-        if not os.path.exists(ENV_PATH):
+        # 4. Archivo de configuración (.env) — creación y reparación automática
+        env_existia_antes = os.path.exists(ENV_PATH)
+
+        if not env_existia_antes:
             klog("warn", "Configuración .env no encontrada. Iniciando aprovisionamiento...")
             open(ENV_PATH, "w", encoding="utf-8").close()
         else:
@@ -202,10 +204,12 @@ if __name__ == "__main__":
 
         faltantes = reparar_env(ENV_PATH)
         for clave in faltantes:
-            klog("init", f"Variable faltante detectada: generando {clave} con su valor por defecto...")
+            klog("init", f"Variable faltante detectada: generando {clave} con su valor predeterminado...")
 
-        if faltantes:
-            klog("ok", f"Archivo .env reparado ({len(faltantes)} variable(s) restauradas).")
+        if not env_existia_antes:
+            klog("ok", f"Archivo .env creado con {len(faltantes)} variable(s) iniciales.")
+        elif faltantes:
+            klog("ok", f"Archivo .env reparado ({len(faltantes)} variable(s) restaurada(s)).")
         else:
             klog("ok", "Archivo .env verificado: todas las variables presentes.")
 
@@ -306,7 +310,6 @@ if __name__ == "__main__":
         auto_abrir = os.environ.get("AUTO_ABRIR_NAVEGADOR", "true").lower() == "true"
         if auto_abrir:
             threading.Timer(1.5, lambda: webbrowser.open(f"http://127.0.0.1:{port}")).start()
-        threading.Timer(1.5, lambda: webbrowser.open(f"http://127.0.0.1:{port}")).start()
 
     app.run(
         host=host,
