@@ -47,10 +47,11 @@
     <div class="seccion-creacion">
         <details class="caja-desplegable">
             <summary class="btn-desplegable">➕ Agregar marcador acá</summary>
-            <form method="POST" action="{{ url_for('marcadores.agregar') }}" class="form-crear">
+                        <form method="POST" action="{{ url_for('marcadores.agregar') }}" class="form-crear">
                 <input type="text" name="titulo" placeholder="Título (opcional si autocompletás)">
                 <input type="url" name="url" placeholder="https://..." required>
                 <input type="text" name="nota" placeholder="Nota (opcional)">
+                <input type="number" name="progreso" placeholder="Progreso inicial (opcional)" min="0">
                 <label class="label-checkbox">
                     <input type="checkbox" name="autocompletar">
                     🔍 Autocompletar título

@@ -181,14 +181,17 @@ def agregar():
     url = request.form["url"]
     titulo = request.form.get("titulo", "").strip()
     nota = request.form.get("nota", "").strip() or None
+    try:
+        progreso = max(0, int(request.form.get("progreso", 0)))
+    except ValueError:
+        progreso = 0
 
     if not titulo and request.form.get("autocompletar"):
         titulo = obtener_titulo_desde_url(url) or url
-
     if not titulo:
         titulo = url
 
-    database.agregar_marcador(titulo, url, carpeta_id, nota)
+    database.agregar_marcador(titulo, url, carpeta_id, nota, progreso)
     registrar_log(f"Marcador agregado: '{titulo}' ({url})")
     return redirect(request.referrer or url_for("marcadores.home"))
 
@@ -295,15 +298,10 @@ def configuracion():
         set_key(RUTA_ENV, "MODO_OSCURO", modo_oscuro)
         os.environ["MODO_OSCURO"] = modo_oscuro
 
-        nuevo_puerto = request.form.get("port")
-        if nuevo_puerto:
-            set_key(RUTA_ENV, "PORT", nuevo_puerto)
-            os.environ["PORT"] = nuevo_puerto
-
         if esta_desbloqueado():
-            flask_debug = "true" if "flask_debug" in request.form else "false"
-            set_key(RUTA_ENV, "FLASK_DEBUG", flask_debug)
-            os.environ["FLASK_DEBUG"] = flask_debug
+            auto_abrir_navegador = "true" if "auto_abrir_navegador" in request.form else "false"
+            set_key(RUTA_ENV, "AUTO_ABRIR_NAVEGADOR", auto_abrir_navegador)
+            os.environ["AUTO_ABRIR_NAVEGADOR"] = auto_abrir_navegador
 
             log_mode = "true" if "log_mode" in request.form else "false"
             set_key(RUTA_ENV, "LOG_MODE", log_mode)
@@ -313,6 +311,11 @@ def configuracion():
             if nuevo_host:
                 set_key(RUTA_ENV, "HOST", nuevo_host)
                 os.environ["HOST"] = nuevo_host
+
+            nuevo_puerto = request.form.get("port")
+            if nuevo_puerto:
+                set_key(RUTA_ENV, "PORT", nuevo_puerto)
+                os.environ["PORT"] = nuevo_puerto
 
         registrar_log("Configuración guardada en .env")
         return redirect(url_for("marcadores.configuracion", guardado=1))
@@ -436,4 +439,8 @@ def importar_html_ruta():
         database.importar_datos(carpetas_data, marcadores_data)
         registrar_log(f"Importación HTML completada: {len(marcadores_data)} marcadores importados")
     return redirect(url_for("marcadores.home"))
+
+
+
+
 

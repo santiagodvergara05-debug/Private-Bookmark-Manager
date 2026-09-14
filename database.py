@@ -197,3 +197,15 @@ def actualizar_progreso(id_marcador, delta):
     )
     conexion.commit()
     conexion.close()
+
+
+
+
+def agregar_marcador(titulo, url, carpeta_id=None, nota=None, progreso=0):
+    conexion = get_conexion()
+    conexion.execute(
+        "INSERT INTO marcadores (titulo, url, carpeta_id, nota, progreso) VALUES (?, ?, ?, ?, ?)",
+        (titulo, url, carpeta_id, nota, progreso)
+    )
+    conexion.commit()
+    conexion.close()

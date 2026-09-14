@@ -26,10 +26,7 @@
             <h3 class="tarjeta-titulo">🎨 Preferencias Generales</h3>
             <p class="tarjeta-desc">Ajustes visuales y de navegación cotidiana.</p>
             
-            <div class="campo-grupo">
-                <label for="port">Puerto local del servidor:</label>
-                <input type="text" id="port" name="port" value="{{ valores.get('PORT', '5050') }}" class="input-corto">
-            </div>
+            
 
             <div class="lista-checkboxes">
                 <label class="label-checkbox">
@@ -63,6 +60,11 @@
     <input type="password" name="password">
 </div>
 
+           <div class="campo-grupo">
+                <label for="port">Puerto local del servidor:</label>
+                <input type="text" id="port" name="port" value="{{ valores.get('PORT', '5050') }}" class="input-corto">
+            </div>
+
                 <div class="campo-grupo">
                     <label>Host (alcance de red):</label>
                     <select name="host">
@@ -75,10 +77,10 @@
                     </select>
                 </div>
 
-                <div class="lista-checkboxes">
+                                <div class="lista-checkboxes">
                     <label class="label-checkbox">
-                        <input type="checkbox" name="flask_debug" {% if valores.get('FLASK_DEBUG', 'false') == 'true' %}checked{% endif %}>
-                        Modo depuración (Debug mode)
+                        <input type="checkbox" name="auto_abrir_navegador" {% if valores.get('AUTO_ABRIR_NAVEGADOR', 'true') == 'true' %}checked{% endif %}>
+                        Abrir pestaña del navegador automáticamente al iniciar (solo aplica al ejecutable .exe)
                     </label>
 
                     <label class="label-checkbox">
@@ -87,7 +89,7 @@
                     </label>
                 </div>
             {% else %}
-                <p class="tarjeta-desc">Opciones avanzadas (contraseña, alcance de red y modo debug) protegidas por llave maestra.</p>
+                <p class="tarjeta-desc">Opciones avanzadas (contraseña, alcance de red y apertura automática) protegidas por llave maestra.</p>
                 <div class="aviso aviso-advertencia">
                     🔒 Sección bloqueada. Desbloqueá con tu Master Key más abajo para modificar estos valores.
                 </div>
