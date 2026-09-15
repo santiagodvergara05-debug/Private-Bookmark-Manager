@@ -23,7 +23,7 @@ Gestor de marcadores privado, ligero y altamente resiliente diseñado para opera
 ## Funcionalidades del Sistema
 
 * **Gestión de Marcadores y Carpetas:** Organización estructurada de enlaces web agrupados por carpetas personalizadas.
-* **Seguimiento de Progreso Numérico:** Contador manual integrado para registrar el avance de lectura o consumo en enlaces específicos (ideal para mangas, cómics, novelas ligeras, series o cursos).
+* **Seguimiento de Progreso Numérico:** Contador manual integrado, definible desde el momento de agregar el marcador o editable después, para registrar el avance de lectura o consumo en enlaces específicos (ideal para mangas, cómics, novelas ligeras, series o cursos).
 * **Notas Contextuales:** Asignación de recordatorios y notas descriptivas junto al enlace para complementar la información sin necesidad de abrirlo.
 * **Autenticación y Seguridad de Acceso:**
   * Servidor web protegido por inicio de sesión (credenciales de fábrica: mostradas automáticamente en la pantalla de login en el primer arranque, con opción de copiado rápido; el aviso desaparece de forma permanente tras el primer inicio de sesión exitoso).
@@ -45,6 +45,7 @@ Gestor de marcadores privado, ligero y altamente resiliente diseñado para opera
   * Auto-aprovisionamiento del entorno (`.env`) y generación de llaves criptográficas de 256 bits (`MASTER_KEY`, `SECRET_KEY`).
   * Comprobación de integridad estructural en frío (`PRAGMA integrity_check`).
   * Aislamiento automático en cuarentena (`.corrupt_*`) ante corrupciones de base de datos y reconstrucción en limpio sin interrupción del servicio.
+  * Auto-aprovisionamiento del entorno (`.env`) y generación de llaves criptográficas de 256 bits (`MASTER_KEY`, `SECRET_KEY`); repara automáticamente archivos `.env` existentes a los que les falten variables agregadas en versiones nuevas, sin sobrescribir las ya configuradas.
 * **Consola Administrativa (`CLI_admin`):** Gestión fuera de banda de contraseñas, rotación criptográfica, alcance de red y restauración de fábrica.
 * **Herramienta de Caos (`CLI_Chaos`):** Inyector de fallos binarios para simular caídas de disco y borrados accidentales (bloqueado por seguridad si el modo depuración está desactivado).
 * **Portabilidad:** Diseñado para correr en servidores Linux/Raspberry Pi o compilarse como binario autónomo para Windows (`.exe`) sin requerir Python instalado.
