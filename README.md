@@ -26,11 +26,13 @@ Gestor de marcadores privado, ligero y altamente resiliente diseñado para opera
 * **Seguimiento de Progreso Numérico:** Contador manual integrado para registrar el avance de lectura o consumo en enlaces específicos (ideal para mangas, cómics, novelas ligeras, series o cursos).
 * **Notas Contextuales:** Asignación de recordatorios y notas descriptivas junto al enlace para complementar la información sin necesidad de abrirlo.
 * **Autenticación y Seguridad de Acceso:**
-  * Servidor web protegido por inicio de sesión (credencial inicial de fábrica: informada en la consola durante el boot inicial).
+  * Servidor web protegido por inicio de sesión (credenciales de fábrica: mostradas automáticamente en la pantalla de login en el primer arranque, con opción de copiado rápido; el aviso desaparece de forma permanente tras el primer inicio de sesión exitoso).
   * **Métodos para cambiar la contraseña:**
     1. **Desde la consola administrativa:** Ejecutando `CLI_admin.exe` (o `python CLI_admin.py`).
     2. **Desde el archivo de configuración:** Editando `APP_PASSWORD` en `.env` y reiniciando el servidor.
     3. **Desde la interfaz web:** En la sección **Configuración**, desbloqueando los ajustes críticos mediante la `MASTER_KEY` (llave criptográfica de 256 bits consultable en `.env` y regenerable mediante el CLI).
+
+* **Copias de Seguridad Interoperables:** Exportación e importación en formato JSON (respaldo completo, con notas y progreso) o HTML estándar (Netscape Bookmark File), compatible con Chrome, Firefox, Edge y Brave para migrar marcadores hacia o desde el navegador.
 
 ---
 
@@ -108,16 +110,20 @@ SISTEMA_INICIALIZADO='true'
 SECRET_KEY='llave_sesion_flask_hex_256'
 MASTER_KEY='llave_maestra_hex_256'
 APP_PASSWORD='tu_contraseña_aqui'
+CONTRASENA_MOSTRADA='false'   # se pone en 'true' automáticamente tras el primer login; no editar a mano
 
 # Parámetros de Interfaz
-MOSTRAR_FAVICONS=
-ABRIR_NUEVA_PESTANA=
-MODO_OSCURO=
+MOSTRAR_FAVICONS='true'
+ABRIR_NUEVA_PESTANA='true'
+MODO_OSCURO='false'
 
-# Red y Servidor
+# Comportamiento del ejecutable (.exe)
+AUTO_ABRIR_NAVEGADOR='true'   # abre el navegador automáticamente al iniciar; sin efecto al correr desde código
+
+# Red y Servidor (PORT y HOST requieren la MASTER_KEY para modificarse desde la web)
 PORT='5050'
 HOST='127.0.0.1'       # Usar '0.0.0.0' para habilitar acceso en toda la LAN
-FLASK_DEBUG='false'    # 'true' habilita herramientas de caos y desarrollo
+FLASK_DEBUG='false'    # 'true' habilita herramientas de caos y desarrollo — solo editable por .env o CLI_admin, ya no desde la web
 LOG_MODE='false'       # 'true' activa telemetría de solicitudes en consola
 ```
 
@@ -129,7 +135,7 @@ Seguridad: Rotación atómica de MASTER_KEY y SECRET_KEY, cambio de contraseña 
 
 Red: Cambio dinámico de puertos y alternancia entre interfaz Local (127.0.0.1) o Global (0.0.0.0).
 
-Mantenimiento: Restauración completa de fábrica con confirmación explícita (BORRAR).
+Mantenimiento: Restauración completa de fábrica con confirmación explícita (CONFIRMAR).
 
 Suite de Caos (CLI_Chaos.py)
 Utilidad reservada para validación y desarrollo:
@@ -142,10 +148,10 @@ Compilación a Ejecutables (.exe)
 Para empaquetar la solución sin dependencias externas mediante PyInstaller:
 
 # Compilar servidor principal
-```pyinstaller --noconfirm --onefile --console --name "PBMPrivateBookmarkManager" --add-data "templates;templates" --add-data "static;static" app.py```
+```python -m PyInstaller --noconfirm --onefile --console --name "PBMPrivateBookmarkManager" --add-data "templates;templates" --add-data "static;static" app.py```
 
 # Compilar consola administrativa
-```pyinstaller --noconfirm --onefile --console --name "CLI_admin" CLI_admin.py```
+```python -m PyInstaller --noconfirm --onefile --console --name "CLI_admin" CLI_admin.py```
 
 Licencia
 Distribuido bajo la Licencia GNU GPLv3. Consulta el archivo LICENSE para más información.
