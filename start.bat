@@ -94,7 +94,7 @@ if exist ".git" (
 )
 
 :: ===================================================================
-:: PASO 4: Comprobación por Hash MD5 de dependencias (Fast-Boot)
+:: PASO 4: Comprobación e Instalación detallada de Dependencias
 :: ===================================================================
 if exist "requirements.txt" (
     set "DO_INSTALL=0"
@@ -106,14 +106,26 @@ if exist "requirements.txt" (
     )
 
     if "!DO_INSTALL!"=="1" (
-        echo %TAG_INIT% Novedades en requirements.txt. Actualizando librerías...
-        python -m pip install -r requirements.txt --quiet >nul 2>&1
-        if !errorlevel! equ 0 (
-            python -c "import hashlib, pathlib; pathlib.Path(r'.venv\.req_hash').write_text(hashlib.md5(open('requirements.txt','rb').read()).hexdigest())" >nul 2>&1
-            echo %TAG_OK% Dependencias verificadas y listas para producción.
-        ) else (
-            echo %TAG_WARN% Fallo parcial en pip. Verifique dependencias manuales.
+        echo %TAG_INFO% Sincronizando librerias de requirements.txt...
+        
+        :: Bucle que lee cada linea ignorando comentarios (#)
+        for /f "usebackq eol=# delims=" %%L in ("requirements.txt") do (
+            set "PAQUETE=%%L"
+            
+            :: Imprime el intento de instalacion con tag INIT
+            <nul set /p "=%TAG_INIT% Instalando !BOLD!!PAQUETE!!RESET!... "
+            
+            python -m pip install "!PAQUETE!" --quiet >nul 2>&1
+            if !errorlevel! equ 0 (
+                echo %TAG_OK%
+            ) else (
+                echo %TAG_FAIL%
+            )
         )
+
+        :: Guardar huella digital tras completar
+        python -c "import hashlib, pathlib; pathlib.Path(r'.venv\.req_hash').write_text(hashlib.md5(open('requirements.txt','rb').read()).hexdigest())" >nul 2>&1
+        echo %TAG_OK% Todas las dependencias quedaron preparadas.
     ) else (
         echo %TAG_OK% Dependencias verificadas - sin cambios en requirements.txt
     )
