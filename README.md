@@ -1,4 +1,3 @@
-```markdown
 # Private Bookmark Manager (PBM) — v2.7.0
 
 [![Versión](https://img.shields.io/badge/Versión-2.7.0-blue.svg)](version.py)
@@ -105,7 +104,7 @@ Gestor de marcadores privado, autocontenido y de alta resiliencia diseñado para
    git clone [https://github.com/santiagodvergara05-debug/Private-Bookmark-Manager.git](https://github.com/santiagodvergara05-debug/Private-Bookmark-Manager.git)
    cd Private-Bookmark-Manager
 
-```
+
 
 2. **Inicio automatizado por scripts:**
 * **En Windows:** Ejecuta con doble clic `start.bat`.
