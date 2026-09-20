@@ -61,7 +61,7 @@ if not exist ".venv\Scripts\python.exe" (
     echo %TAG_OK% Entorno virtual detectado e indexado.
 )
 
-:: Aislar el entorno añadiendo su carpeta Scripts al PATH sin usar activate.bat
+:: Aislar el entorno añadiendo su carpeta Scripts al PATH sin llamar a activate.bat
 set "PATH=%~dp0.venv\Scripts;%PATH%"
 set "VIRTUAL_ENV=%~dp0.venv"
 
@@ -78,7 +78,7 @@ if exist ".git" (
         for /f %%i in ('git rev-parse @{u} 2^>nul') do set "REMOTE_REV=%%i"
 
         if not defined REMOTE_REV (
-            echo %TAG_OK% Rama local activa (sin seguimiento remoto configurado).
+            echo %TAG_OK% Rama local activa - sin seguimiento remoto configurado
         ) else if "!LOCAL_REV!"=="!REMOTE_REV!" (
             echo %TAG_OK% Repositorio local sincronizado con GitHub.
         ) else (
@@ -115,7 +115,7 @@ if exist "requirements.txt" (
             echo %TAG_WARN% Fallo parcial en pip. Verifique dependencias manuales.
         )
     ) else (
-        echo %TAG_OK% Dependencias verificadas (sin cambios en requirements.txt).
+        echo %TAG_OK% Dependencias verificadas - sin cambios en requirements.txt
     )
 )
 
@@ -128,7 +128,7 @@ if "%AUTO_OPEN%"=="1" (
 
 echo -------------------------------------------------------------------
 echo %TAG_INFO% Servidor Local enrutado en http://127.0.0.1:%APP_PORT%
-echo %TAG_INFO% Acceso LAN Red: Desactivado (modo exclusivo PC local)
+echo %TAG_INFO% Acceso LAN Red: Desactivado - modo exclusivo PC local
 echo %BOLD%>>> %APP_NAME% OPERATIVO Y LISTO <<<%RESET%
 echo -------------------------------------------------------------------
 echo.
