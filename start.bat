@@ -93,7 +93,7 @@ if exist ".git" (
 )
 
 :: ===================================================================
-:: PASO 4: Comprobación e Instalación Detallada de Dependencias
+:: PASO 4: Comprobacion e Instalacion Detallada de Dependencias
 :: ===================================================================
 if exist "requirements.txt" (
     set "DO_INSTALL=0"
@@ -104,13 +104,19 @@ if exist "requirements.txt" (
         if errorlevel 1 set "DO_INSTALL=1"
     )
 
+    :: Comprobacion preventiva: si falta Flask fisicamente, forzar instalacion
     "%VENV_PY%" -c "import flask" >nul 2>&1
     if errorlevel 1 set "DO_INSTALL=1"
 
     if "!DO_INSTALL!"=="1" (
-        echo %TAG_INFO% Sincronizando librerías de requirements.txt...
+        echo %TAG_INFO% Sincronizando librerias de requirements.txt...
+        
+        :: 1. Normalizar requirements.txt a UTF-8 estandar (soluciona el UTF-16 de PowerShell)
+        "%VENV_PY%" -c "p='requirements.txt'; b=open(p,'rb').read(); t=b.decode('utf-16' if b[:2] in (b'\xff\xfe', b'\xfe\xff') else 'utf-8-sig', errors='ignore'); open(p,'w',encoding='utf-8').write(t)" >nul 2>&1
+
         set "INSTALL_OK=1"
 
+        :: 2. Bucle de instalacion con telemetria en tiempo real
         for /f "usebackq eol=# delims=" %%L in ("requirements.txt") do (
             set "PAQUETE=%%L"
             <nul set /p "=%TAG_INIT% Instalando !BOLD!!PAQUETE!!RESET!... "
@@ -124,11 +130,12 @@ if exist "requirements.txt" (
             )
         )
 
+        :: 3. Solo guardar la huella si todos los paquetes se instalaron con exito
         if "!INSTALL_OK!"=="1" (
             "%VENV_PY%" -c "import hashlib, pathlib; pathlib.Path(r'%VENV_DIR%\.req_hash').write_text(hashlib.md5(open('requirements.txt','rb').read()).hexdigest())" >nul 2>&1
             echo %TAG_OK% Todas las dependencias quedaron preparadas.
         ) else (
-            echo %TAG_WARN% Uno o más paquetes fallaron. Se reintentará en el próximo inicio.
+            echo %TAG_WARN% Uno o mas paquetes fallaron. Se reintentara en el proximo inicio.
         )
     ) else (
         echo %TAG_OK% Dependencias verificadas - sin cambios en requirements.txt
@@ -136,16 +143,16 @@ if exist "requirements.txt" (
 )
 
 :: ===================================================================
-:: PASO 5: Transferencia de Control al Bootloader de la Aplicación
+:: PASO 5: Transferencia de Control al Bootloader de la Aplicacion
 :: ===================================================================
 echo -------------------------------------------------------------------
-echo %TAG_OK% Entorno validado. Lanzando núcleo del servidor...
+echo %TAG_OK% Entorno validado. Lanzando nucleo del servidor...
 echo -------------------------------------------------------------------
 
 "%VENV_PY%" "%APP_FILE%"
 if errorlevel 1 (
     echo.
-    echo %TAG_FAIL% La aplicación finalizó con un código de error.
+    echo %TAG_FAIL% La aplicacion finalizo con un codigo de error.
 )
 
 pause
