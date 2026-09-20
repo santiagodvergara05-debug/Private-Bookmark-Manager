@@ -116,13 +116,14 @@ if exist "requirements.txt" (
 
         set "INSTALL_OK=1"
 
-        :: 2. Bucle seguro compatible con cualquier consola
+    :: 2. Bucle con seguimiento detallado por dependencia
         for /f "usebackq eol=# tokens=1 delims= " %%L in ("requirements.txt") do (
             set "PAQUETE=%%L"
+            echo %TAG_INIT% Instalando: !BOLD!!PAQUETE!!RESET!...
             
             "%VENV_PY%" -m pip install "!PAQUETE!" --quiet >nul 2>&1
             if !errorlevel! equ 0 (
-                echo %TAG_OK% Dependencia instalada: !BOLD!!PAQUETE!!RESET!
+                echo %TAG_OK% Instalado: !BOLD!!PAQUETE!!RESET!
             ) else (
                 echo %TAG_FAIL% Error al instalar: !BOLD!!PAQUETE!!RESET!
                 set "INSTALL_OK=0"
