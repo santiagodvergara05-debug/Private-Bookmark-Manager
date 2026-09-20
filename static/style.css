@@ -1028,3 +1028,512 @@ body.oscuro .badge-tech {
     background: #3a3a3a;
     color: #ddd;
 }
+
+
+/* ==========================================================================
+   MÓDULO DE RESPALDOS Y SMART DROPZONE (CONFIGURACIÓN)
+   ========================================================================== */
+.backup-dual-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: 1.25rem;
+    margin-top: 1rem;
+}
+
+.backup-subcard {
+    display: flex;
+    flex-direction: column;
+    background: rgba(128, 128, 128, 0.05);
+    border: 1px solid rgba(128, 128, 128, 0.2);
+    border-radius: 10px;
+    padding: 1.1rem;
+}
+
+.subcard-title {
+    margin: 0 0 0.25rem 0;
+    font-size: 1.05rem;
+    color: inherit;
+}
+
+.subcard-desc {
+    margin: 0 0 1rem 0;
+    font-size: 0.85rem;
+    opacity: 0.8;
+}
+
+.badge-portabilidad {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    font-weight: 600;
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--primario, #3b82f6);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.export-tiles-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.tile-export {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 0.85rem 1rem;
+    border-radius: 8px;
+    text-decoration: none;
+    color: inherit;
+    border: 1px solid rgba(128, 128, 128, 0.22);
+    background: rgba(128, 128, 128, 0.04);
+    transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.tile-export:hover {
+    transform: translateY(-2px);
+    border-color: var(--primario, #3b82f6);
+    background: rgba(59, 130, 246, 0.08);
+}
+
+.tile-icon {
+    font-size: 1.7rem;
+    line-height: 1;
+}
+
+.tile-content {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+}
+
+.tile-content strong {
+    font-size: 0.92rem;
+}
+
+.tile-content small {
+    font-size: 0.78rem;
+    opacity: 0.75;
+    margin-top: 3px;
+}
+
+.dropzone-area {
+    border: 2px dashed rgba(128, 128, 128, 0.35);
+    border-radius: 10px;
+    padding: 1.25rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: rgba(128, 128, 128, 0.03);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.dropzone-area:hover, .dropzone-area.drag-over {
+    border-color: var(--primario, #3b82f6);
+    background: rgba(59, 130, 246, 0.08);
+}
+
+.dropzone-area.has-file {
+    border-color: #10b981;
+    background: rgba(16, 185, 129, 0.08);
+}
+
+.dropzone-area.has-error {
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.08);
+}
+
+.dropzone-icon {
+    font-size: 2.2rem;
+    line-height: 1;
+}
+
+.dropzone-info {
+    font-size: 0.88rem;
+    line-height: 1.35;
+    color: inherit;
+}
+
+.dropzone-alert-error {
+    margin-top: 0.75rem;
+    padding: 0.6rem 0.8rem;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.btn-restore-block {
+    width: 100%;
+    margin-top: 0.85rem;
+    padding: 0.7rem 1rem;
+    font-size: 0.92rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-restore-block:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    filter: grayscale(1);
+}
+
+/* ==========================================================================
+   CAMPO DE ACCESO CON BOTÓN DE VISIBILIDAD (LOGIN)
+   ========================================================================== */
+.login-input-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    background: rgba(128, 128, 128, 0.08);
+    border: 1px solid rgba(128, 128, 128, 0.3);
+    border-radius: 8px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.login-input-box:focus-within {
+    border-color: var(--primario, #3b82f6);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.login-lock-icon {
+    padding-left: 0.85rem;
+    font-size: 1rem;
+    opacity: 0.6;
+    user-select: none;
+}
+
+.login-input-box input {
+    flex: 1;
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    padding: 0.75rem 0.6rem !important;
+    font-size: 0.95rem;
+    color: inherit;
+    box-shadow: none !important;
+}
+
+.btn-toggle-eye {
+    background: transparent;
+    border: none;
+    outline: none;
+    padding: 0 0.85rem;
+    cursor: pointer;
+    font-size: 1.1rem;
+    line-height: 1;
+    opacity: 0.65;
+    transition: opacity 0.15s ease, transform 0.1s ease;
+    user-select: none;
+}
+
+.btn-toggle-eye:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+
+/* ==========================================================================
+   MODAL DE CONFIRMACIÓN (ELIMINAR CARPETA)
+   ========================================================================== */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(3px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
+}
+
+.modal-caja {
+    background: var(--fondo-tarjeta, #1e1e24);
+    color: inherit;
+    border: 1px solid rgba(128, 128, 128, 0.25);
+    border-radius: 12px;
+    width: 100%;
+    max-width: 480px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+    animation: modalEntrada 0.18s ease-out;
+}
+
+@keyframes modalEntrada {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+}
+
+.modal-titulo {
+    margin: 0;
+    font-size: 1.15rem;
+}
+
+.btn-cerrar-modal {
+    background: transparent;
+    border: none;
+    font-size: 1.1rem;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.6;
+    transition: opacity 0.15s ease;
+}
+
+.btn-cerrar-modal:hover {
+    opacity: 1;
+}
+
+.modal-cuerpo {
+    padding: 1.25rem;
+}
+
+.modal-texto-principal {
+    margin-top: 0;
+    font-size: 0.98rem;
+    line-height: 1.4;
+}
+
+.modal-aviso-conteo {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    color: var(--primario, #3b82f6);
+    padding: 0.65rem 0.85rem;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    margin-bottom: 1rem;
+}
+
+.modal-opcion-borrado {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    cursor: pointer;
+    margin: 0.8rem 0;
+    font-size: 0.92rem;
+}
+
+.modal-explicacion {
+    font-size: 0.82rem;
+    opacity: 0.75;
+    margin-bottom: 0;
+    line-height: 1.35;
+}
+
+.modal-acciones {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 0.9rem 1.25rem;
+    background: rgba(128, 128, 128, 0.05);
+    border-top: 1px solid rgba(128, 128, 128, 0.2);
+}
+
+/* ==========================================================================
+   BARRA FLOTANTE DE ACCIONES EN LOTE (BATCH MOVE)
+   ========================================================================== */
+.barra-flotante-lote {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--fondo-tarjeta, #1e1e24);
+    color: inherit;
+    border: 1px solid rgba(128, 128, 128, 0.35);
+    border-radius: 50px;
+    padding: 0.6rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+    z-index: 900;
+    animation: barraEntrada 0.2s ease;
+}
+
+@keyframes barraEntrada {
+    from { transform: translate(-50%, 20px); opacity: 0; }
+    to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+.barra-lote-info {
+    font-weight: 600;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.barra-lote-form {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    margin: 0;
+}
+
+.select-destino-lote {
+    padding: 0.35rem 0.65rem;
+    border-radius: 20px;
+    border: 1px solid rgba(128, 128, 128, 0.3);
+    background: rgba(128, 128, 128, 0.08);
+    color: inherit;
+    font-size: 0.88rem;
+    outline: none;
+}
+
+.chk-marcador-wrap {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 0.5rem;
+    cursor: pointer;
+}
+
+.chk-marcador {
+    width: 17px;
+    height: 17px;
+    cursor: pointer;
+}
+
+.btn-icono-accion {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0 4px;
+    line-height: 1;
+    color: inherit;
+    transition: transform 0.1s ease;
+}
+
+.btn-icono-accion:hover {
+    transform: scale(1.15);
+}
+
+.flex-entre {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.btn-sm {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.85rem;
+}
+
+/* ==========================================================================
+   FILAS DE CARPETAS (ALINEACIÓN FLEX Y ESPACIADO)
+   ========================================================================== */
+.carpeta-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.carpeta-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1; /* Ocupa el espacio disponible y empuja las acciones a la derecha */
+}
+
+.carpeta-acciones {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+/* Espaciado del título de sección con respecto a la lista */
+.encabezado-seccion {
+    margin-top: 1.5rem;
+    margin-bottom: 0.6rem;
+}
+
+
+/* ==========================================================================
+   BARRA FLOTANTE DE ACCIONES EN LOTE (ESTILO DOCK COMPACTO)
+   ========================================================================== */
+.barra-flotante-lote {
+    position: fixed;
+    bottom: 1.8rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--fondo-tarjeta, #1c1d22);
+    color: inherit;
+    border: 1px solid rgba(128, 128, 128, 0.35);
+    border-radius: 999px;
+    padding: 0.45rem 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+    z-index: 1000;
+    white-space: nowrap;
+    animation: barraEntrada 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes barraEntrada {
+    from { transform: translate(-50%, 20px); opacity: 0; }
+    to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+.barra-lote-info {
+    font-weight: 600;
+    font-size: 0.86rem;
+    padding: 0 0.5rem 0 0.25rem;
+    border-right: 1px solid rgba(128, 128, 128, 0.25);
+    line-height: 1;
+}
+
+.barra-lote-acciones {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: nowrap; /* Evita que los botones salten hacia abajo */
+}
+
+.barra-lote-form {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0;
+}
+
+#formEliminarLote {
+    display: inline-flex;
+    margin: 0;
+}
+
+.select-destino-lote {
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    border: 1px solid rgba(128, 128, 128, 0.3);
+    background: rgba(128, 128, 128, 0.1);
+    color: inherit;
+    font-size: 0.84rem;
+    outline: none;
+    cursor: pointer;
+    max-width: 220px;
+}
+
+.barra-flotante-lote .btn-sm {
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    line-height: 1.2;
+}

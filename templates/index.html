@@ -1,22 +1,30 @@
 {% extends "base.html" %}
 {% block titulo %}{{ carpeta_actual['nombre'] if carpeta_actual else 'Mis Marcadores' }}{% endblock %}
+
 {% block contenido %}
+    <!-- ======================================================================= -->
+    <!-- 1. IDENTIDAD DE PÁGINA Y AVISOS PREVENTIVOS DEL SISTEMA                 -->
+    <!-- ======================================================================= -->
     <h1>
-    <span class="badge-app">PBM</span>
-    {{ carpeta_actual['nombre'] if carpeta_actual else 'Mis Marcadores' }}
+        <span class="badge-app">PBM</span>
+        {{ carpeta_actual['nombre'] if carpeta_actual else 'Mis Marcadores' }}
     </h1>
 
+    <!-- Alerta: Contraseña por defecto activa -->
     {% if contraseña_por_defecto %}
         <div class="aviso aviso-peligro">
-            ⚠️ Estás usando la contraseña por defecto (<code>cambiame</code>). Cambiala en <a href="{{ url_for('marcadores.configuracion') }}" class="btn-link">Configuración</a> o en ajustes desde la consola del servidor.
+            ⚠️ Estás usando la contraseña por defecto (<code>cambiame</code>). Cámbiala en 
+            <a href="{{ url_for('marcadores.configuracion') }}" class="btn-link">Configuración</a> 
+            o mediante la consola del servidor.
         </div>
     {% endif %}
 
+    <!-- Alerta: Recordatorio periódico de copia de seguridad -->
     {% if recordar_backup %}
         <div class="aviso aviso-advertencia">
-            <span>⚠️ Hace {{ dias_sin_backup }} días que no hacés una copia de seguridad.</span>
+            <span>⚠️ Hace {{ dias_sin_backup }} días que no realizas una copia de seguridad.</span>
             <div class="aviso-acciones">
-                <a href="{{ url_for('marcadores.exportar') }}" class="btn-link">Descargar backup</a>
+                <a href="{{ url_for('marcadores.exportar') }}" class="btn-link">Descargar respaldo</a>
                 <form method="POST" action="{{ url_for('marcadores.posponer_backup') }}">
                     <button type="submit" class="btn-secundario">Recordarme más tarde</button>
                 </form>
@@ -24,6 +32,9 @@
         </div>
     {% endif %}
 
+    <!-- ======================================================================= -->
+    <!-- 2. BARRA DE HERRAMIENTAS, BÚSQUEDA Y NAVEGACIÓN GLOBAL                  -->
+    <!-- ======================================================================= -->
     <div class="barra-herramientas">
         <form method="GET" action="{{ url_for('marcadores.buscar') }}" class="form-busqueda">
             <input type="text" name="q" placeholder="Buscar marcador...">
@@ -37,18 +48,22 @@
         </nav>
     </div>
 
+    <!-- Navegación de retorno al directorio raíz -->
     {% if carpeta_actual %}
         <div class="nav-volver">
-    <a href="{{ url_for('marcadores.home') }}" class="btn-nav">⬅️ Volver a Mis Marcadores</a>
-</div>
+            <a href="{{ url_for('marcadores.home') }}" class="btn-nav">⬅️ Volver a Mis Marcadores</a>
+        </div>
     {% endif %}
 
-    <!-- ACCIONES DE CREACIÓN ARRIBA -->
+    <!-- ======================================================================= -->
+    <!-- 3. MÓDULOS DESPLEGABLES DE CREACIÓN RÁPIDA                              -->
+    <!-- ======================================================================= -->
     <div class="seccion-creacion">
+        <!-- Desplegable: Agregar Marcador -->
         <details class="caja-desplegable">
             <summary class="btn-desplegable">➕ Agregar marcador acá</summary>
-                        <form method="POST" action="{{ url_for('marcadores.agregar') }}" class="form-crear">
-                <input type="text" name="titulo" placeholder="Título (opcional si autocompletás)">
+            <form method="POST" action="{{ url_for('marcadores.agregar') }}" class="form-crear">
+                <input type="text" name="titulo" placeholder="Título (opcional si autocompletas)">
                 <input type="url" name="url" placeholder="https://..." required>
                 <input type="text" name="nota" placeholder="Nota (opcional)">
                 <input type="number" name="progreso" placeholder="Progreso inicial (opcional)" min="0">
@@ -61,6 +76,7 @@
             </form>
         </details>
 
+        <!-- Desplegable: Crear Carpeta -->
         <details class="caja-desplegable">
             <summary class="btn-desplegable">📁 Nueva carpeta acá</summary>
             <form method="POST" action="{{ url_for('marcadores.crear_carpeta') }}" class="form-crear">
@@ -71,24 +87,79 @@
         </details>
     </div>
 
-    <h3>Carpetas</h3>
-    <ul>
+    <!-- ======================================================================= -->
+    <!-- 4. CATÁLOGO DE CARPETAS (SELECCIÓN EXCLUSIVA DE CARPETAS)               -->
+    <!-- ======================================================================= -->
+    <div class="encabezado-seccion flex-entre">
+        <h3 style="margin: 0;">Carpetas</h3>
+        {% if subcarpetas %}
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <!-- Botón: Afecta únicamente a carpetas -->
+                <button type="button" id="btnSelTodasCarpetas" class="btn-secundario btn-sm btn-select-grupo" onclick="alternarSeleccionarCarpetas()" style="display: none;">
+                    ☑️ Seleccionar todas
+                </button>
+                <button type="button" class="btn-secundario btn-sm btn-toggle-seleccion" onclick="alternarModoSeleccion()">
+                    ☑️ Selección múltiple
+                </button>
+            </div>
+        {% endif %}
+    </div>
+
+    <ul class="lista-carpetas">
         {% for c in subcarpetas %}
-            <li>
-                📁 <a href="{{ url_for('marcadores.ver_carpeta_ruta', carpeta_id=c['id']) }}">{{ c['nombre'] }}</a>
-                <a href="{{ url_for('marcadores.editar_carpeta', carpeta_id=c['id']) }}">✏️</a>
-                <a href="{{ url_for('marcadores.eliminar_carpeta', carpeta_id=c['id']) }}" onclick="return confirm('¿Eliminar esta carpeta? Su contenido se moverá a Sin carpeta.');">🗑️</a>
+            <li class="carpeta-item" data-id="{{ c['id'] }}">
+                <!-- Checkbox exclusivo de carpeta -->
+                <label class="chk-carpeta-wrap" style="display: none; margin-right: 0.5rem; align-items: center; cursor: pointer;">
+                    <input type="checkbox" class="chk-carpeta" value="{{ c['id'] }}" onchange="actualizarBarraLote()">
+                </label>
+
+                <div class="carpeta-info">
+                    📁 <a href="{{ url_for('marcadores.ver_carpeta_ruta', carpeta_id=c['id']) }}" class="carpeta-enlace">{{ c['nombre'] }}</a>
+                </div>
+                <div class="carpeta-acciones">
+                    <a href="{{ url_for('marcadores.editar_carpeta', carpeta_id=c['id']) }}" title="Editar y mover">✏️</a>
+                    <button type="button" class="btn-icono-accion" title="Eliminar carpeta"
+                            data-id="{{ c['id'] }}"
+                            data-nombre="{{ c['nombre'] }}"
+                            onclick="abrirModalEliminarCarpeta(this.dataset.id, this.dataset.nombre)">
+                        🗑️
+                    </button>
+                </div>
             </li>
+        {% else %}
+            <li class="item-vacio">No hay carpetas en este nivel.</li>
         {% endfor %}
     </ul>
 
-    <h3>Marcadores</h3>
-    <ul>
+    <!-- ======================================================================= -->
+    <!-- 5. CATÁLOGO DE MARCADORES (SELECCIÓN EXCLUSIVA DE MARCADORES)           -->
+    <!-- ======================================================================= -->
+    <div class="encabezado-seccion flex-entre">
+        <h3 style="margin: 0;">Marcadores</h3>
+        {% if marcadores %}
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <!-- Botón: Afecta únicamente a marcadores -->
+                <button type="button" id="btnSelTodosMarcadores" class="btn-secundario btn-sm btn-select-grupo" onclick="alternarSeleccionarMarcadores()" style="display: none;">
+                    ☑️ Seleccionar todos
+                </button>
+                <button type="button" class="btn-secundario btn-sm btn-toggle-seleccion" onclick="alternarModoSeleccion()">
+                    ☑️ Selección múltiple
+                </button>
+            </div>
+        {% endif %}
+    </div>
+
+    <ul class="lista-marcadores" id="listaMarcadores">
         {% for m in marcadores %}
-            <li class="marcador-item">
+            <li class="marcador-item" data-id="{{ m['id'] }}">
+                <!-- Checkbox exclusivo de marcador -->
+                <label class="chk-marcador-wrap" style="display: none;">
+                    <input type="checkbox" class="chk-marcador" value="{{ m['id'] }}" onchange="actualizarBarraLote()">
+                </label>
+
                 <div class="marcador-info">
                     {% if mostrar_favicons %}
-                        <img src="https://www.google.com/s2/favicons?domain={{ m['url'] }}&sz=32" alt="" width="16" height="16">
+                        <img src="https://www.google.com/s2/favicons?domain={{ m['url'] }}&sz=32" alt="" width="16" height="16" class="marcador-favicon">
                     {% endif %}
                     <a href="{{ m['url'] }}" class="marcador-enlace" {% if abrir_nueva_pestana %}target="_blank" rel="noopener noreferrer"{% endif %}>
                         {{ m['titulo'] }}
@@ -102,22 +173,300 @@
                 </div>
 
                 <div class="marcador-acciones">
-    {% if m['progreso'] and m['progreso'] > 0 %}
-        <span class="progreso">
-            <form method="POST" action="{{ url_for('marcadores.progreso', id_marcador=m['id'], accion='restar') }}" style="display:inline;">
-                <button type="submit">−</button>
-            </form>
-            <span class="num-progreso">{{ m['progreso'] }}</span>
-            <form method="POST" action="{{ url_for('marcadores.progreso', id_marcador=m['id'], accion='sumar') }}" style="display:inline;">
-                <button type="submit">+</button>
-            </form>
-        </span>
-    {% endif %}
+                    {% if m['progreso'] and m['progreso'] > 0 %}
+                        <span class="progreso">
+                            <form method="POST" action="{{ url_for('marcadores.progreso', id_marcador=m['id'], accion='restar') }}" style="display:inline;">
+                                <button type="submit">−</button>
+                            </form>
+                            <span class="num-progreso">{{ m['progreso'] }}</span>
+                            <form method="POST" action="{{ url_for('marcadores.progreso', id_marcador=m['id'], accion='sumar') }}" style="display:inline;">
+                                <button type="submit">+</button>
+                            </form>
+                        </span>
+                    {% endif %}
 
-    <a href="{{ url_for('marcadores.editar', id_marcador=m['id']) }}">✏️</a>
-    <a href="{{ url_for('marcadores.eliminar', id_marcador=m['id']) }}" onclick="return confirm('¿Eliminar este marcador?');">🗑️</a>
-</div>
+                    <a href="{{ url_for('marcadores.editar', id_marcador=m['id']) }}" title="Editar marcador">✏️</a>
+                    <a href="{{ url_for('marcadores.eliminar', id_marcador=m['id']) }}" onclick="return confirm('¿Eliminar este marcador?');" title="Eliminar marcador">🗑️</a>
+                </div>
             </li>
+        {% else %}
+            <li class="item-vacio">No hay marcadores registrados en este nivel.</li>
         {% endfor %}
     </ul>
+
+    <!-- ======================================================================= -->
+    <!-- 6. BARRA FLOTANTE DE ACCIONES EN LOTE (BATCH MOVE & DELETE)             -->
+    <!-- ======================================================================= -->
+    <div id="barraLote" class="barra-flotante-lote" style="display: none;">
+        <div class="barra-lote-info">
+            <span id="cantSeleccionados">0 seleccionados</span>
+        </div>
+
+        <div class="barra-lote-acciones">
+            <!-- Formulario: Mover en lote (Carpetas y/o Marcadores) -->
+            <form id="formMoverLote" method="POST" action="{{ url_for('marcadores.mover_masivo') }}" class="barra-lote-form">
+                <select name="nueva_carpeta_id" id="selectCarpetaDestino" class="select-destino-lote">
+                    <option value="">📂 Destino: Raíz (Sin carpeta)</option>
+                    {% for carp in todas_las_carpetas %}
+                        {% if not carpeta_actual or carpeta_actual['id'] != carp['id'] %}
+                            <option value="{{ carp['id'] }}">📁 {{ carp['nombre'] }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+                <button type="submit" id="btnEjecutarMoverLote" class="btn-primario btn-sm" disabled>Mover aquí</button>
+            </form>
+
+            <!-- Formulario: Borrado en lote (Aplica exclusivamente a marcadores) -->
+            <form id="formEliminarLote" method="POST" action="{{ url_for('marcadores.eliminar_masivo') }}" style="display: inline-flex; margin: 0;" onsubmit="return confirm('¿Eliminar permanentemente los marcadores seleccionados? (Las carpetas no se borrarán desde esta acción rápida).');">
+                <button type="submit" id="btnEjecutarEliminarLote" class="btn-peligro btn-sm" disabled>🗑️ Eliminar</button>
+            </form>
+
+            <button type="button" class="btn-secundario btn-sm" onclick="cancelarSeleccion()">Cancelar</button>
+        </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- 7. MODAL DE CONFIRMACIÓN: ELIMINACIÓN DE CARPETA                        -->
+    <!-- ======================================================================= -->
+    <div id="modalEliminarCarpeta" class="modal-overlay" style="display: none;">
+        <div class="modal-caja">
+            <div class="modal-header">
+                <h3 class="modal-titulo">🗑️ Eliminar Carpeta</h3>
+                <button type="button" class="btn-cerrar-modal" onclick="cerrarModalEliminarCarpeta()">✖</button>
+            </div>
+
+            <form id="formEliminarCarpeta" method="POST" action="">
+                <div class="modal-cuerpo">
+                    <p class="modal-texto-principal">
+                        ¿Estás seguro de que deseas eliminar la carpeta <strong id="modalNombreCarpeta"></strong>?
+                    </p>
+                    
+                    <div id="modalAvisoConteo" class="modal-aviso-conteo">
+                        Esta carpeta contiene <b id="modalCantMarcadores">0</b> marcador(es).
+                    </div>
+
+                    <label class="label-checkbox modal-opcion-borrado">
+                        <input type="checkbox" name="borrar_contenido" id="chkBorrarContenido" value="true">
+                        <span><strong>Eliminar también todos los marcadores contenidos</strong></span>
+                    </label>
+
+                    <p class="modal-explicacion">
+                        ℹ️ Si dejas la casilla desmarcada, los marcadores se preservarán y se reubicarán en la <em>Raíz (Sin carpeta)</em>.
+                    </p>
+                </div>
+
+                <div class="modal-acciones">
+                    <button type="button" class="btn-secundario" onclick="cerrarModalEliminarCarpeta()">Cancelar</button>
+                    <button type="submit" class="btn-peligro">Eliminar Carpeta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- 8. MOTOR JAVASCRIPT: CONTROLADORES DE MODAL Y SELECCIÓN INDEPENDIENTE   -->
+    <!-- ======================================================================= -->
+    <script>
+        // ---------------------------------------------------------------------
+        // SECCIÓN A: CONTROL DE LA VENTANA MODAL DE CARPETAS
+        // ---------------------------------------------------------------------
+        const modalEliminar = document.getElementById('modalEliminarCarpeta');
+        const formEliminar = document.getElementById('formEliminarCarpeta');
+        const modalNombre = document.getElementById('modalNombreCarpeta');
+        const modalCant = document.getElementById('modalCantMarcadores');
+        const chkBorrar = document.getElementById('chkBorrarContenido');
+
+        function abrirModalEliminarCarpeta(carpetaId, nombreCarpeta) {
+            modalNombre.textContent = `"${nombreCarpeta}"`;
+            formEliminar.action = `/eliminar_carpeta/${carpetaId}`;
+            chkBorrar.checked = false;
+
+            fetch(`/carpeta/${carpetaId}/conteo`)
+                .then(r => r.json())
+                .then(data => {
+                    modalCant.textContent = data.total || 0;
+                })
+                .catch(() => {
+                    modalCant.textContent = '0';
+                });
+
+            modalEliminar.style.display = 'flex';
+        }
+
+        function cerrarModalEliminarCarpeta() {
+            modalEliminar.style.display = 'none';
+        }
+
+        window.addEventListener('click', (e) => {
+            if (e.target === modalEliminar) {
+                cerrarModalEliminarCarpeta();
+            }
+        });
+
+        // ---------------------------------------------------------------------
+        // SECCIÓN B: MODO SELECCIÓN MÚLTIPLE Y ACCIONES POR GRUPO
+        // ---------------------------------------------------------------------
+        let modoSeleccionActivo = false;
+        const botonesToggle = document.querySelectorAll('.btn-toggle-seleccion');
+        const btnSelCarpetas = document.getElementById('btnSelTodasCarpetas');
+        const btnSelMarcadores = document.getElementById('btnSelTodosMarcadores');
+        const barraLote = document.getElementById('barraLote');
+        const cantTexto = document.getElementById('cantSeleccionados');
+        const btnMover = document.getElementById('btnEjecutarMoverLote');
+        const btnEliminarLote = document.getElementById('btnEjecutarEliminarLote');
+        const formMoverLote = document.getElementById('formMoverLote');
+        const formEliminarLote = document.getElementById('formEliminarLote');
+
+        function alternarModoSeleccion() {
+            modoSeleccionActivo = !modoSeleccionActivo;
+            const wrappersM = document.querySelectorAll('.chk-marcador-wrap');
+            const wrappersC = document.querySelectorAll('.chk-carpeta-wrap');
+            
+            wrappersM.forEach(w => w.style.display = modoSeleccionActivo ? 'inline-flex' : 'none');
+            wrappersC.forEach(w => w.style.display = modoSeleccionActivo ? 'inline-flex' : 'none');
+
+            // Sincronizar botones de apertura / cierre
+            botonesToggle.forEach(btn => {
+                btn.textContent = modoSeleccionActivo ? '✖ Cerrar' : '☑️ Selección múltiple';
+            });
+
+            // Mostrar u ocultar los botones específicos de selección por grupo
+            if (btnSelCarpetas) btnSelCarpetas.style.display = modoSeleccionActivo ? 'inline-block' : 'none';
+            if (btnSelMarcadores) btnSelMarcadores.style.display = modoSeleccionActivo ? 'inline-block' : 'none';
+
+            if (modoSeleccionActivo) {
+                actualizarEstadoBotonesSeleccion();
+                barraLote.style.display = 'flex';
+            } else {
+                cancelarSeleccion();
+            }
+        }
+
+        // 1. Conmutador exclusivo para Carpetas
+        function alternarSeleccionarCarpetas() {
+            const chks = document.querySelectorAll('.chk-carpeta');
+            if (chks.length === 0) return;
+            const algunoSinMarcar = Array.from(chks).some(c => !c.checked);
+            chks.forEach(c => c.checked = algunoSinMarcar);
+            actualizarBarraLote();
+        }
+
+        // 2. Conmutador exclusivo para Marcadores
+        function alternarSeleccionarMarcadores() {
+            const chks = document.querySelectorAll('.chk-marcador');
+            if (chks.length === 0) return;
+            const algunoSinMarcar = Array.from(chks).some(c => !c.checked);
+            chks.forEach(c => c.checked = algunoSinMarcar);
+            actualizarBarraLote();
+        }
+
+        // 3. Mantiene el texto de los botones alineado con el estado real de cada grupo
+        function actualizarEstadoBotonesSeleccion() {
+            // Estado de carpetas
+            if (btnSelCarpetas) {
+                const chksC = document.querySelectorAll('.chk-carpeta');
+                if (chksC.length > 0) {
+                    const todasMarcadas = Array.from(chksC).every(c => c.checked);
+                    btnSelCarpetas.textContent = todasMarcadas ? '⬜ Desmarcar todas' : '☑️ Seleccionar todas';
+                }
+            }
+
+            // Estado de marcadores
+            if (btnSelMarcadores) {
+                const chksM = document.querySelectorAll('.chk-marcador');
+                if (chksM.length > 0) {
+                    const todosMarcados = Array.from(chksM).every(c => c.checked);
+                    btnSelMarcadores.textContent = todosMarcados ? '⬜ Desmarcar todos' : '☑️ Seleccionar todos';
+                }
+            }
+        }
+
+        function actualizarBarraLote() {
+            const marcadoresSel = document.querySelectorAll('.chk-marcador:checked');
+            const carpetasSel = document.querySelectorAll('.chk-carpeta:checked');
+            const total = marcadoresSel.length + carpetasSel.length;
+
+            cantTexto.textContent = `${total} seleccionado${total === 1 ? '' : 's'}`;
+            if (btnMover) btnMover.disabled = (total === 0);
+            if (btnEliminarLote) btnEliminarLote.disabled = (marcadoresSel.length === 0);
+
+            actualizarEstadoBotonesSeleccion();
+        }
+
+        function cancelarSeleccion() {
+            modoSeleccionActivo = false;
+            document.querySelectorAll('.chk-marcador, .chk-carpeta').forEach(chk => chk.checked = false);
+            document.querySelectorAll('.chk-marcador-wrap, .chk-carpeta-wrap').forEach(w => w.style.display = 'none');
+            
+            botonesToggle.forEach(btn => {
+                btn.textContent = '☑️ Selección múltiple';
+            });
+
+            if (btnSelCarpetas) {
+                btnSelCarpetas.style.display = 'none';
+                btnSelCarpetas.textContent = '☑️ Seleccionar todas';
+            }
+            if (btnSelMarcadores) {
+                btnSelMarcadores.style.display = 'none';
+                btnSelMarcadores.textContent = '☑️ Seleccionar todos';
+            }
+
+            barraLote.style.display = 'none';
+            if (btnMover) btnMover.disabled = true;
+            if (btnEliminarLote) btnEliminarLote.disabled = true;
+            cantTexto.textContent = '0 seleccionados';
+        }
+
+        // Envío de MOVER en lote (Inyecta carpetas y marcadores seleccionados)
+        if (formMoverLote) {
+            formMoverLote.addEventListener('submit', function(e) {
+                const marcadoresSel = document.querySelectorAll('.chk-marcador:checked');
+                const carpetasSel = document.querySelectorAll('.chk-carpeta:checked');
+
+                if (marcadoresSel.length === 0 && carpetasSel.length === 0) {
+                    e.preventDefault();
+                    return;
+                }
+
+                this.querySelectorAll('input[name="ids_marcadores"], input[name="ids_carpetas"]').forEach(el => el.remove());
+
+                marcadoresSel.forEach(chk => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'ids_marcadores';
+                    input.value = chk.value;
+                    this.appendChild(input);
+                });
+
+                carpetasSel.forEach(chk => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'ids_carpetas';
+                    input.value = chk.value;
+                    this.appendChild(input);
+                });
+            });
+        }
+
+        // Envío de BORRAR en lote (Exclusivo para marcadores)
+        if (formEliminarLote) {
+            formEliminarLote.addEventListener('submit', function(e) {
+                const marcadoresSel = document.querySelectorAll('.chk-marcador:checked');
+                if (marcadoresSel.length === 0) {
+                    e.preventDefault();
+                    return;
+                }
+
+                this.querySelectorAll('input[name="ids_marcadores"]').forEach(el => el.remove());
+
+                marcadoresSel.forEach(chk => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'ids_marcadores';
+                    input.value = chk.value;
+                    this.appendChild(input);
+                });
+            });
+        }
+    </script>
 {% endblock %}

@@ -1,20 +1,64 @@
 {% extends "base.html" %}
 {% block titulo %}Editar carpeta — PBM{% endblock %}
+
 {% block contenido %}
+    <!-- ======================================================================= -->
+    <!-- 1. NAVEGACIÓN DE RETORNO Y ENCABEZADO                                  -->
+    <!-- ======================================================================= -->
     <div class="nav-volver">
         <a href="{{ url_for('marcadores.home') }}" class="btn-nav">⬅️ Volver a Mis Marcadores</a>
     </div>
 
-    <h1>📁 Renombrar carpeta</h1>
+    <h1>
+        <span class="badge-app">PBM</span>
+        Editar Carpeta
+    </h1>
 
-    <div class="tarjeta-config" style="max-width: 420px;">
+    <!-- ======================================================================= -->
+    <!-- 2. FORMULARIO DE EDICIÓN DE NOMBRE Y TRASLADO JERÁRQUICO               -->
+    <!-- ======================================================================= -->
+    <div class="tarjeta-config" style="max-width: 480px;">
         <form method="POST" class="form-config-panel">
+            
+            <!-- Campo 1: Nombre de la carpeta -->
             <div class="campo-grupo">
-                <label for="nombre">Nombre de la carpeta:</label>
-                <input type="text" id="nombre" name="nombre" value="{{ carpeta['nombre'] }}" required>
+                <label for="nombre"><b>Nombre de la carpeta:</b></label>
+                <input 
+                    type="text" 
+                    id="nombre" 
+                    name="nombre" 
+                    value="{{ carpeta['nombre'] }}" 
+                    required 
+                    autofocus
+                    placeholder="Nombre descriptivo"
+                >
             </div>
 
-            <div class="form-acciones-edicion">
+            <!-- Campo 2: Ubicación jerárquica (Mover de carpeta) -->
+            <div class="campo-grupo" style="margin-top: 1.25rem;">
+                <label for="carpeta_padre_id"><b>Ubicación (Carpeta contenedora):</b></label>
+                <select name="carpeta_padre_id" id="carpeta_padre_id" style="width: 100%; padding: 0.6rem; border-radius: 8px;">
+                    <!-- Opción predeterminada: Nivel raíz -->
+                    <option value="" {% if not carpeta['carpeta_padre_id'] %}selected{% endif %}>
+                        📂 Raíz (Nivel principal)
+                    </option>
+                    
+                    <!-- Catálogo de carpetas (excluye la propia carpeta) -->
+                    {% for c in todas_las_carpetas %}
+                        {% if c['id'] != carpeta['id'] %}
+                            <option value="{{ c['id'] }}" {% if carpeta['carpeta_padre_id'] == c['id'] %}selected{% endif %}>
+                                📁 {{ c['nombre'] }}
+                            </option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+                <small style="opacity: 0.75; display: block; margin-top: 0.4rem; font-size: 0.82rem;">
+                    ℹ️ Selecciona otra carpeta para moverla como subdirectorio o "Raíz" para el nivel principal.
+                </small>
+            </div>
+
+            <!-- Botones de confirmación y cancelación -->
+            <div class="form-acciones-edicion" style="margin-top: 1.5rem;">
                 <button type="submit" class="btn-primario">💾 Guardar cambios</button>
                 <a href="{{ url_for('marcadores.home') }}" class="btn-nav">Cancelar</a>
             </div>

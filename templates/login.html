@@ -45,35 +45,43 @@
 
                 <!-- Ayuda contextual compacta -->
                 <details class="panel-guia-cambio">
-    <summary>¿Dónde modificar estas credenciales?</summary>
-    <div class="guia-opciones">
-        <div class="opcion-item">
-            <span class="badge-tech">Web</span>
-            <span>Solo <b>contraseña de acceso</b> (desde Configuración).</span>
-        </div>
-        <div class="opcion-item">
-            <span class="badge-tech">CLI</span>
-            <span>Ambas claves (ejecutando <code>CLI_admin.py</code> o <code>.exe</code>).</span>
-        </div>
-        <div class="opcion-item">
-            <span class="badge-tech">ENV</span>
-            <span>Edición manual directa en el archivo <code>.env</code>.</span>
-        </div>
-    </div>
-</details>
+                    <summary>¿Dónde modificar estas credenciales?</summary>
+                    <div class="guia-opciones">
+                        <div class="opcion-item">
+                            <span class="badge-tech">Web</span>
+                            <span>Solo <b>contraseña de acceso</b> (desde Configuración).</span>
+                        </div>
+                        <div class="opcion-item">
+                            <span class="badge-tech">CLI</span>
+                            <span>Ambas claves (ejecutando <code>CLI_admin.py</code> o <code>.exe</code>).</span>
+                        </div>
+                        <div class="opcion-item">
+                            <span class="badge-tech">ENV</span>
+                            <span>Edición manual directa en el archivo <code>.env</code>.</span>
+                        </div>
+                    </div>
+                </details>
             </div>
         {% endif %}
 
-        <form method="POST" class="login-form">
+        <!-- Formulario de acceso con contenedor relativo para el botón de visibilidad -->
+        <form method="POST" class="login-form" autocomplete="off">
             <div class="login-input-grupo">
-                <input 
-                    type="password" 
-                    name="password" 
-                    placeholder="Contraseña de acceso" 
-                    required 
-                    autofocus
-                    autocomplete="current-password"
-                >
+                <div class="login-input-box">
+                    <span class="login-lock-icon">🔒</span>
+                    <input 
+                        type="password" 
+                        id="inputPassword"
+                        name="password" 
+                        placeholder="Contraseña de acceso" 
+                        required 
+                        autofocus
+                        autocomplete="current-password"
+                    >
+                    <button type="button" id="btnToggleEye" class="btn-toggle-eye" onclick="togglePasswordVisibility()" title="Mostrar u ocultar contraseña">
+                        👁️
+                    </button>
+                </div>
             </div>
             <button type="submit" class="login-btn">Entrar</button>
         </form>
@@ -92,6 +100,22 @@
 </div>
 
 <script>
+// 1. Conmutar visibilidad de la contraseña
+function togglePasswordVisibility() {
+    const passInput = document.getElementById("inputPassword");
+    const btnEye = document.getElementById("btnToggleEye");
+    if (!passInput) return;
+
+    if (passInput.type === "password") {
+        passInput.type = "text";
+        if (btnEye) btnEye.textContent = "🙈";
+    } else {
+        passInput.type = "password";
+        if (btnEye) btnEye.textContent = "👁️";
+    }
+}
+
+// 2. Copia segura de credenciales temporales
 function copiarTexto(texto) {
     if (navigator.clipboard && window.isSecureContext) {
         return navigator.clipboard.writeText(texto);
@@ -107,7 +131,6 @@ function copiarTexto(texto) {
     return Promise.resolve();
 }
 
-// Corregido a .btn-copia-moderno
 document.querySelectorAll('.btn-copia-moderno').forEach(boton => {
     boton.addEventListener('click', () => {
         const targetId = boton.dataset.target;
