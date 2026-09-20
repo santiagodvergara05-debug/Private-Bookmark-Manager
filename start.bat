@@ -58,7 +58,7 @@ if not exist "%VENV_PY%" (
         pause
         exit /b 1
     )
-    echo %TAG_OK% Entorno virtual .venv generado con éxito.
+    echo %TAG_OK% Entorno virtual .venv generado con exito.
     set "FIRST_RUN=1"
 ) else (
     echo %TAG_OK% Entorno virtual detectado e indexado.
@@ -111,12 +111,12 @@ if exist "requirements.txt" (
     if "!DO_INSTALL!"=="1" (
         echo %TAG_INFO% Sincronizando librerias de requirements.txt...
         
-        :: 1. Normalizar requirements.txt a UTF-8 estandar (soluciona el UTF-16 de PowerShell)
-        "%VENV_PY%" -c "p='requirements.txt'; b=open(p,'rb').read(); t=b.decode('utf-16' if b[:2] in (b'\xff\xfe', b'\xfe\xff') else 'utf-8-sig', errors='ignore'); open(p,'w',encoding='utf-8').write(t)" >nul 2>&1
+        :: Normalizar requirements.txt eliminando \r por completo con splitlines
+        "%VENV_PY%" -c "import pathlib; p=pathlib.Path('requirements.txt'); lines=[l.strip() for l in p.read_text(encoding='utf-8', errors='ignore').splitlines() if l.strip() and not l.startswith('#')]; p.write_text('\n'.join(lines) + '\n', encoding='utf-8', newline='\n')" >nul 2>&1
 
         set "INSTALL_OK=1"
 
-    :: 2. Bucle con seguimiento detallado por dependencia
+        :: Bucle limpio libre de caracteres de control
         for /f "usebackq eol=# tokens=1 delims= " %%L in ("requirements.txt") do (
             set "PAQUETE=%%L"
             echo %TAG_INIT% Instalando: !BOLD!!PAQUETE!!RESET!...
@@ -130,7 +130,7 @@ if exist "requirements.txt" (
             )
         )
 
-        :: 3. Solo guardar la huella si todos los paquetes se instalaron con exito
+        :: Guardar huella solo si todos los paquetes finalizaron con exito
         if "!INSTALL_OK!"=="1" (
             "%VENV_PY%" -c "import hashlib, pathlib; pathlib.Path(r'%VENV_DIR%\.req_hash').write_text(hashlib.md5(open('requirements.txt','rb').read()).hexdigest())" >nul 2>&1
             echo %TAG_OK% Todas las dependencias quedaron preparadas.
