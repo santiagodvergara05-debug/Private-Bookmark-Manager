@@ -14,7 +14,7 @@ Gestor de marcadores privado, autocontenido y de alta resiliencia diseñado para
     <tr>
       <td align="center" valign="bottom">
         <b>Vista Escritorio</b><br><br>
-        <img width="601" height="475" alt="Vista Escritorio" src="<img width="730" height="743" alt="image" src="https://github.com/user-attachments/assets/20d35fc3-f621-47fa-9b6c-06aa6b6004ca" />
+        <img width="730" height="743" alt="image" src="https://github.com/user-attachments/assets/95f317f8-c2ab-4376-a014-2c840f4e2ede" />
 " />
       </td>
       <td align="center" valign="bottom">
