@@ -12,14 +12,13 @@ Gestor de marcadores privado, autocontenido y de alta resiliencia diseñado para
 <div align="center">
   <table>
     <tr>
-      <td align="center" valign="bottom">
+      <td align="center" valign="top">
         <b>Vista Escritorio</b><br><br>
-        <img width="730" height="743" alt="image" src="https://github.com/user-attachments/assets/95f317f8-c2ab-4376-a014-2c840f4e2ede" />
-" />
+        <img width="500" alt="Vista Escritorio" src="https://github.com/user-attachments/assets/95f317f8-c2ab-4376-a014-2c840f4e2ede" />
       </td>
-      <td align="center" valign="bottom">
+      <td align="center" valign="top">
         <b>Diseño Móvil (LAN / Responsive)</b><br><br>
-        <img width="540" height="1200" alt="image" src="https://github.com/user-attachments/assets/0eb24d93-f8b8-450d-8d78-55aeaf3811bc" />
+        <img width="260" alt="Diseño Móvil" src="https://github.com/user-attachments/assets/0eb24d93-f8b8-450d-8d78-55aeaf3811bc" />
       </td>
     </tr>
   </table>
