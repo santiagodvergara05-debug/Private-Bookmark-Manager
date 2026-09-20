@@ -19,7 +19,7 @@ Gestor de marcadores privado, autocontenido y de alta resiliencia diseñado para
       </td>
       <td align="center" valign="bottom">
         <b>Diseño Móvil (LAN / Responsive)</b><br><br>
-        <img width="540" height="1089" alt="Diseño Móvil" src="https://github.com/user-attachments/assets/86d19773-14a8-4f10-bac8-ca14a1557b20" />
+        <img width="540" height="1200" alt="image" src="https://github.com/user-attachments/assets/0eb24d93-f8b8-450d-8d78-55aeaf3811bc" />
       </td>
     </tr>
   </table>
