@@ -93,32 +93,45 @@ if exist ".git" (
 )
 
 :: ===================================================================
-:: PASO 4: Comprobacion e Instalacion de Dependencias
+:: PASO 4: Comprobacion e Instalacion Detallada de Dependencias
 :: ===================================================================
 if exist "requirements.txt" (
     set "DO_INSTALL=0"
     
-    :: Si es primera ejecucion, requiere instalar
-    if "!FIRST_RUN!"=="1" set "DO_INSTALL=1"
-
-    :: Validar si el hash MD5 cambio
-    if "!DO_INSTALL!"=="0" (
+    if "!FIRST_RUN!"=="1" (
+        set "DO_INSTALL=1"
+    ) else (
         "%VENV_PY%" -c "import hashlib, pathlib, sys; f=pathlib.Path(r'%VENV_DIR%\.req_hash'); sys.exit(0 if f.exists() and f.read_text().strip()==hashlib.md5(open('requirements.txt','rb').read()).hexdigest() else 1)" >nul 2>&1
         if errorlevel 1 set "DO_INSTALL=1"
     )
 
-    :: Comprobacion de seguridad: si no existe Flask en el venv, forzar instalacion
+    :: Comprobacion extra: si falta Flask fisicamente, forzar instalacion
     "%VENV_PY%" -c "import flask" >nul 2>&1
     if errorlevel 1 set "DO_INSTALL=1"
 
     if "!DO_INSTALL!"=="1" (
-        echo %TAG_INIT% Sincronizando dependencias en el entorno virtual...
-        "%VENV_PY%" -m pip install -r requirements.txt --quiet >nul 2>&1
-        if !errorlevel! equ 0 (
+        echo %TAG_INFO% Sincronizando librerias de requirements.txt...
+        set "INSTALL_OK=1"
+
+        for /f "usebackq eol=# delims=" %%L in ("requirements.txt") do (
+            set "PAQUETE=%%L"
+            <nul set /p "=%TAG_INIT% Instalando !BOLD!!PAQUETE!!RESET!... "
+            
+            "%VENV_PY%" -m pip install "!PAQUETE!" --quiet >nul 2>&1
+            if !errorlevel! equ 0 (
+                echo %TAG_OK%
+            ) else (
+                echo %TAG_FAIL%
+                set "INSTALL_OK=0"
+            )
+        )
+
+        :: Solo registrar el hash si TODOS los paquetes se instalaron sin error
+        if "!INSTALL_OK!"=="1" (
             "%VENV_PY%" -c "import hashlib, pathlib; pathlib.Path(r'%VENV_DIR%\.req_hash').write_text(hashlib.md5(open('requirements.txt','rb').read()).hexdigest())" >nul 2>&1
-            echo %TAG_OK% Dependencias verificadas y listas para produccion.
+            echo %TAG_OK% Todas las dependencias quedaron preparadas.
         ) else (
-            echo %TAG_WARN% Fallo parcial en pip. Verifique dependencias manuales.
+            echo %TAG_WARN% Uno o mas paquetes fallaron. Se reintentara en el proximo inicio.
         )
     ) else (
         echo %TAG_OK% Dependencias verificadas - sin cambios en requirements.txt
