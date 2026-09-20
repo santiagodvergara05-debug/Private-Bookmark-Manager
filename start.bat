@@ -3,21 +3,24 @@ setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
 :: ===================================================================
-:: PARÁMETROS DEL SERVICIO (Configurar por proyecto)
+:: PARAMETROS DEL SERVICIO (Configurar por proyecto)
 :: ===================================================================
 set "APP_NAME=Private Bookmark Manager"
 set "APP_VER=v2.7.0"
 set "APP_PORT=5050"
 set "APP_FILE=app.py"
-set "AUTO_OPEN=0"
+
+:: Rutas fijas con comillas para soportar carpetas con espacios
+set "VENV_DIR=%~dp0.venv"
+set "VENV_PY=%VENV_DIR%\Scripts\python.exe"
 
 :: 1. Habilitar colores ANSI nativos en Windows 10 / 11
 reg add HKCU\Console /v VirtualTerminalLevel /t REG_DWORD /d 1 /f >nul 2>&1
 
-:: 2. Capturar carácter ESC de forma segura
+:: 2. Capturar caracter ESC de forma segura
 for /f %%a in ('powershell -NoProfile -Command "[char]27"') do set "ESC=%%a"
 
-:: 3. Definición de estilos idénticos al Bootloader
+:: 3. Definicion de estilos identicos al Bootloader
 set "RESET=%ESC%[0m"
 set "BOLD=%ESC%[1m"
 set "TAG_OK=%ESC%[92m[  OK  ]%RESET%"
@@ -37,36 +40,32 @@ echo ===================================================================
 :: ===================================================================
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo %TAG_FAIL% Python no está instalado o no se encuentra en el PATH.
+    echo %TAG_FAIL% Python no esta instalado o no se encuentra en el PATH.
     pause
     exit /b 1
 )
 
 :: ===================================================================
-:: PASO 2: Gestión e indexación del Entorno Virtual (.venv)
+:: PASO 2: Gestion e indexacion del Entorno Virtual (.venv)
 :: ===================================================================
 set "FIRST_RUN=0"
-if not exist ".venv\Scripts\python.exe" (
+if not exist "%VENV_PY%" (
     echo %TAG_INIT% Entorno virtual ausente. Creando estructura .venv...
-    if exist ".venv" rd /s /q ".venv" >nul 2>&1
-    python -m venv .venv
+    if exist "%VENV_DIR%" rd /s /q "%VENV_DIR%" >nul 2>&1
+    python -m venv "%VENV_DIR%"
     if errorlevel 1 (
-        echo %TAG_FAIL% Error crítico al generar el entorno virtual.
+        echo %TAG_FAIL% Error critico al generar el entorno virtual.
         pause
         exit /b 1
     )
-    echo %TAG_OK% Entorno virtual .venv generado con éxito.
+    echo %TAG_OK% Entorno virtual .venv generado con exito.
     set "FIRST_RUN=1"
 ) else (
     echo %TAG_OK% Entorno virtual detectado e indexado.
 )
 
-:: Aislar el entorno añadiendo su carpeta Scripts al PATH sin llamar a activate.bat
-set "PATH=%~dp0.venv\Scripts;%PATH%"
-set "VIRTUAL_ENV=%~dp0.venv"
-
 :: ===================================================================
-:: PASO 3: Sincronización automática de Git
+:: PASO 3: Sincronizacion automatica de Git
 :: ===================================================================
 if exist ".git" (
     where git >nul 2>&1
@@ -85,47 +84,42 @@ if exist ".git" (
             echo %TAG_INFO% Actualizaciones remotas detectadas. Descargando cambios...
             git pull --ff-only --quiet >nul 2>&1
             if !errorlevel! equ 0 (
-                echo %TAG_OK% Código actualizado al último commit.
+                echo %TAG_OK% Codigo actualizado al ultimo commit.
             ) else (
-                echo %TAG_WARN% Conflicto en git pull. Se conserva versión local.
+                echo %TAG_WARN% Conflicto en git pull. Se conserva version local.
             )
         )
     )
 )
 
 :: ===================================================================
-:: PASO 4: Comprobación e Instalación detallada de Dependencias
+:: PASO 4: Comprobacion e Instalacion de Dependencias
 :: ===================================================================
 if exist "requirements.txt" (
     set "DO_INSTALL=0"
-    if "!FIRST_RUN!"=="1" (
-        set "DO_INSTALL=1"
-    ) else (
-        python -c "import hashlib, pathlib, sys; f=pathlib.Path(r'.venv\.req_hash'); sys.exit(0 if f.exists() and f.read_text().strip()==hashlib.md5(open('requirements.txt','rb').read()).hexdigest() else 1)" >nul 2>&1
+    
+    :: Si es primera ejecucion, requiere instalar
+    if "!FIRST_RUN!"=="1" set "DO_INSTALL=1"
+
+    :: Validar si el hash MD5 cambio
+    if "!DO_INSTALL!"=="0" (
+        "%VENV_PY%" -c "import hashlib, pathlib, sys; f=pathlib.Path(r'%VENV_DIR%\.req_hash'); sys.exit(0 if f.exists() and f.read_text().strip()==hashlib.md5(open('requirements.txt','rb').read()).hexdigest() else 1)" >nul 2>&1
         if errorlevel 1 set "DO_INSTALL=1"
     )
 
-    if "!DO_INSTALL!"=="1" (
-        echo %TAG_INFO% Sincronizando librerias de requirements.txt...
-        
-        :: Bucle que lee cada linea ignorando comentarios (#)
-        for /f "usebackq eol=# delims=" %%L in ("requirements.txt") do (
-            set "PAQUETE=%%L"
-            
-            :: Imprime el intento de instalacion con tag INIT
-            <nul set /p "=%TAG_INIT% Instalando !BOLD!!PAQUETE!!RESET!... "
-            
-            python -m pip install "!PAQUETE!" --quiet >nul 2>&1
-            if !errorlevel! equ 0 (
-                echo %TAG_OK%
-            ) else (
-                echo %TAG_FAIL%
-            )
-        )
+    :: Comprobacion de seguridad: si no existe Flask en el venv, forzar instalacion
+    "%VENV_PY%" -c "import flask" >nul 2>&1
+    if errorlevel 1 set "DO_INSTALL=1"
 
-        :: Guardar huella digital tras completar
-        python -c "import hashlib, pathlib; pathlib.Path(r'.venv\.req_hash').write_text(hashlib.md5(open('requirements.txt','rb').read()).hexdigest())" >nul 2>&1
-        echo %TAG_OK% Todas las dependencias quedaron preparadas.
+    if "!DO_INSTALL!"=="1" (
+        echo %TAG_INIT% Sincronizando dependencias en el entorno virtual...
+        "%VENV_PY%" -m pip install -r requirements.txt --quiet >nul 2>&1
+        if !errorlevel! equ 0 (
+            "%VENV_PY%" -c "import hashlib, pathlib; pathlib.Path(r'%VENV_DIR%\.req_hash').write_text(hashlib.md5(open('requirements.txt','rb').read()).hexdigest())" >nul 2>&1
+            echo %TAG_OK% Dependencias verificadas y listas para produccion.
+        ) else (
+            echo %TAG_WARN% Fallo parcial en pip. Verifique dependencias manuales.
+        )
     ) else (
         echo %TAG_OK% Dependencias verificadas - sin cambios en requirements.txt
     )
@@ -141,10 +135,11 @@ echo %BOLD%^>^>^> %APP_NAME% OPERATIVO Y LISTO ^<^<^<%RESET%
 echo -------------------------------------------------------------------
 echo.
 
-python "%APP_FILE%"
+:: Ejecutar con el binario exacto del entorno virtual
+"%VENV_PY%" "%APP_FILE%"
 if errorlevel 1 (
     echo.
-    echo %TAG_FAIL% La aplicación se cerró de forma inesperada.
+    echo %TAG_FAIL% La aplicacion se cerro de forma inesperada.
 )
 
 pause
