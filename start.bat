@@ -132,16 +132,12 @@ if exist "requirements.txt" (
 )
 
 :: ===================================================================
-:: PASO 5: Apertura automática y Despliegue de Flask
+:: PASO 5: Despliegue de Flask
 :: ===================================================================
-if "%AUTO_OPEN%"=="1" (
-    start "" cmd /c "timeout /t 2 /nobreak >nul && start http://127.0.0.1:%APP_PORT%"
-)
-
 echo -------------------------------------------------------------------
 echo %TAG_INFO% Servidor Local enrutado en http://127.0.0.1:%APP_PORT%
 echo %TAG_INFO% Acceso LAN Red: Desactivado - modo exclusivo PC local
-echo %BOLD%>>> %APP_NAME% OPERATIVO Y LISTO <<<%RESET%
+echo %BOLD%^>^>^> %APP_NAME% OPERATIVO Y LISTO ^<^<^<%RESET%
 echo -------------------------------------------------------------------
 echo.
 
