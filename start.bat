@@ -111,13 +111,15 @@ if exist "requirements.txt" (
     if "!DO_INSTALL!"=="1" (
         echo %TAG_INFO% Sincronizando librerias de requirements.txt...
         
-        :: Normalizar requirements.txt eliminando \r por completo con splitlines
-        "%VENV_PY%" -c "import pathlib; p=pathlib.Path('requirements.txt'); lines=[l.strip() for l in p.read_text(encoding='utf-8', errors='ignore').splitlines() if l.strip() and not l.startswith('#')]; p.write_text('\n'.join(lines) + '\n', encoding='utf-8', newline='\n')" >nul 2>&1
+        :: 1. Normalizar requirements.txt con soporte automatico UTF-16 / UTF-8
+        "%VENV_PY%" -c "b=open('requirements.txt','rb').read(); t=b.decode('utf-16' if b[:2] in (b'\xff\xfe',b'\xfe\xff') or b'\x00' in b[:50] else 'utf-8-sig', errors='ignore'); lines=[l.strip() for l in t.splitlines() if l.strip() and not l.strip().startswith('#')]; open('requirements.txt','w',encoding='utf-8',newline='\n').write('\n'.join(lines)+'\n')" >nul 2>&1
 
         set "INSTALL_OK=1"
+        set "COUNT=0"
 
-        :: Bucle limpio libre de caracteres de control
+        :: 2. Bucle con seguimiento detallado por dependencia
         for /f "usebackq eol=# tokens=1 delims= " %%L in ("requirements.txt") do (
+            set /a COUNT+=1
             set "PAQUETE=%%L"
             echo %TAG_INIT% Instalando: !BOLD!!PAQUETE!!RESET!...
             
@@ -130,7 +132,13 @@ if exist "requirements.txt" (
             )
         )
 
-        :: Guardar huella solo si todos los paquetes finalizaron con exito
+        :: Validacion de proteccion: Si no proceso ningun paquete, abortar exito
+        if !COUNT! equ 0 (
+            echo %TAG_FAIL% No se detectaron dependencias validas en requirements.txt.
+            set "INSTALL_OK=0"
+        )
+
+        :: 3. Guardar huella solo si todos los paquetes finalizaron con exito
         if "!INSTALL_OK!"=="1" (
             "%VENV_PY%" -c "import hashlib, pathlib; pathlib.Path(r'%VENV_DIR%\.req_hash').write_text(hashlib.md5(open('requirements.txt','rb').read()).hexdigest())" >nul 2>&1
             echo %TAG_OK% Todas las dependencias quedaron preparadas.
