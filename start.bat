@@ -40,7 +40,7 @@ echo ===================================================================
 :: ===================================================================
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo %TAG_FAIL% Python no está instalado o no se encuentra en el PATH.
+    echo %TAG_FAIL% Python no esta instalado o no se encuentra en el PATH.
     pause
     exit /b 1
 )
@@ -54,7 +54,7 @@ if not exist "%VENV_PY%" (
     if exist "%VENV_DIR%" rd /s /q "%VENV_DIR%" >nul 2>&1
     python -m venv "%VENV_DIR%"
     if errorlevel 1 (
-        echo %TAG_FAIL% Error crítico al generar el entorno virtual.
+        echo %TAG_FAIL% Error critico al generar el entorno virtual.
         pause
         exit /b 1
     )
@@ -84,9 +84,9 @@ if exist ".git" (
             echo %TAG_INFO% Actualizaciones remotas detectadas. Descargando cambios...
             git pull --ff-only --quiet >nul 2>&1
             if !errorlevel! equ 0 (
-                echo %TAG_OK% Código actualizado al último commit.
+                echo %TAG_OK% Codigo actualizado al ultimo commit.
             ) else (
-                echo %TAG_WARN% Conflicto en git pull. Se conserva versión local.
+                echo %TAG_WARN% Conflicto en git pull. Se conserva version local.
             )
         )
     )
