@@ -5,9 +5,10 @@
     <!-- ======================================================================= -->
     <!-- 1. IDENTIDAD DE PÁGINA Y AVISOS PREVENTIVOS DEL SISTEMA                 -->
     <!-- ======================================================================= -->
-    <h1>
+    <h1 style="display: flex; align-items: center; gap: 10px;">
+        <img src="{{ url_for('static', filename='icon.svg') }}" alt="PBM" style="width: 32px; height: 32px; border-radius: 6px; object-fit: contain;">
         <span class="badge-app">PBM</span>
-        {{ carpeta_actual['nombre'] if carpeta_actual else 'Mis Marcadores' }}
+        <span>{{ carpeta_actual['nombre'] if carpeta_actual else 'Mis Marcadores' }}</span>
     </h1>
 
     <!-- Alerta: Contraseña por defecto activa -->
@@ -94,7 +95,6 @@
         <h3 style="margin: 0;">Carpetas</h3>
         {% if subcarpetas %}
             <div style="display: flex; gap: 0.5rem; align-items: center;">
-                <!-- Botón: Afecta únicamente a carpetas -->
                 <button type="button" id="btnSelTodasCarpetas" class="btn-secundario btn-sm btn-select-grupo" onclick="alternarSeleccionarCarpetas()" style="display: none;">
                     ☑️ Seleccionar todas
                 </button>
@@ -108,7 +108,6 @@
     <ul class="lista-carpetas">
         {% for c in subcarpetas %}
             <li class="carpeta-item" data-id="{{ c['id'] }}">
-                <!-- Checkbox exclusivo de carpeta -->
                 <label class="chk-carpeta-wrap" style="display: none; margin-right: 0.5rem; align-items: center; cursor: pointer;">
                     <input type="checkbox" class="chk-carpeta" value="{{ c['id'] }}" onchange="actualizarBarraLote()">
                 </label>
@@ -138,7 +137,6 @@
         <h3 style="margin: 0;">Marcadores</h3>
         {% if marcadores %}
             <div style="display: flex; gap: 0.5rem; align-items: center;">
-                <!-- Botón: Afecta únicamente a marcadores -->
                 <button type="button" id="btnSelTodosMarcadores" class="btn-secundario btn-sm btn-select-grupo" onclick="alternarSeleccionarMarcadores()" style="display: none;">
                     ☑️ Seleccionar todos
                 </button>
@@ -152,7 +150,6 @@
     <ul class="lista-marcadores" id="listaMarcadores">
         {% for m in marcadores %}
             <li class="marcador-item" data-id="{{ m['id'] }}">
-                <!-- Checkbox exclusivo de marcador -->
                 <label class="chk-marcador-wrap" style="display: none;">
                     <input type="checkbox" class="chk-marcador" value="{{ m['id'] }}" onchange="actualizarBarraLote()">
                 </label>
@@ -203,7 +200,6 @@
         </div>
 
         <div class="barra-lote-acciones">
-            <!-- Formulario: Mover en lote (Carpetas y/o Marcadores) -->
             <form id="formMoverLote" method="POST" action="{{ url_for('marcadores.mover_masivo') }}" class="barra-lote-form">
                 <select name="nueva_carpeta_id" id="selectCarpetaDestino" class="select-destino-lote">
                     <option value="">📂 Destino: Raíz (Sin carpeta)</option>
@@ -216,7 +212,6 @@
                 <button type="submit" id="btnEjecutarMoverLote" class="btn-primario btn-sm" disabled>Mover aquí</button>
             </form>
 
-            <!-- Formulario: Borrado en lote (Aplica exclusivamente a marcadores) -->
             <form id="formEliminarLote" method="POST" action="{{ url_for('marcadores.eliminar_masivo') }}" style="display: inline-flex; margin: 0;" onsubmit="return confirm('¿Eliminar permanentemente los marcadores seleccionados? (Las carpetas no se borrarán desde esta acción rápida).');">
                 <button type="submit" id="btnEjecutarEliminarLote" class="btn-peligro btn-sm" disabled>🗑️ Eliminar</button>
             </form>
@@ -267,9 +262,7 @@
     <!-- 8. MOTOR JAVASCRIPT: CONTROLADORES DE MODAL Y SELECCIÓN INDEPENDIENTE   -->
     <!-- ======================================================================= -->
     <script>
-        // ---------------------------------------------------------------------
         // SECCIÓN A: CONTROL DE LA VENTANA MODAL DE CARPETAS
-        // ---------------------------------------------------------------------
         const modalEliminar = document.getElementById('modalEliminarCarpeta');
         const formEliminar = document.getElementById('formEliminarCarpeta');
         const modalNombre = document.getElementById('modalNombreCarpeta');
@@ -303,9 +296,7 @@
             }
         });
 
-        // ---------------------------------------------------------------------
         // SECCIÓN B: MODO SELECCIÓN MÚLTIPLE Y ACCIONES POR GRUPO
-        // ---------------------------------------------------------------------
         let modoSeleccionActivo = false;
         const botonesToggle = document.querySelectorAll('.btn-toggle-seleccion');
         const btnSelCarpetas = document.getElementById('btnSelTodasCarpetas');
@@ -325,12 +316,10 @@
             wrappersM.forEach(w => w.style.display = modoSeleccionActivo ? 'inline-flex' : 'none');
             wrappersC.forEach(w => w.style.display = modoSeleccionActivo ? 'inline-flex' : 'none');
 
-            // Sincronizar botones de apertura / cierre
             botonesToggle.forEach(btn => {
                 btn.textContent = modoSeleccionActivo ? '✖ Cerrar' : '☑️ Selección múltiple';
             });
 
-            // Mostrar u ocultar los botones específicos de selección por grupo
             if (btnSelCarpetas) btnSelCarpetas.style.display = modoSeleccionActivo ? 'inline-block' : 'none';
             if (btnSelMarcadores) btnSelMarcadores.style.display = modoSeleccionActivo ? 'inline-block' : 'none';
 
@@ -342,7 +331,6 @@
             }
         }
 
-        // 1. Conmutador exclusivo para Carpetas
         function alternarSeleccionarCarpetas() {
             const chks = document.querySelectorAll('.chk-carpeta');
             if (chks.length === 0) return;
@@ -351,7 +339,6 @@
             actualizarBarraLote();
         }
 
-        // 2. Conmutador exclusivo para Marcadores
         function alternarSeleccionarMarcadores() {
             const chks = document.querySelectorAll('.chk-marcador');
             if (chks.length === 0) return;
@@ -360,9 +347,7 @@
             actualizarBarraLote();
         }
 
-        // 3. Mantiene el texto de los botones alineado con el estado real de cada grupo
         function actualizarEstadoBotonesSeleccion() {
-            // Estado de carpetas
             if (btnSelCarpetas) {
                 const chksC = document.querySelectorAll('.chk-carpeta');
                 if (chksC.length > 0) {
@@ -371,7 +356,6 @@
                 }
             }
 
-            // Estado de marcadores
             if (btnSelMarcadores) {
                 const chksM = document.querySelectorAll('.chk-marcador');
                 if (chksM.length > 0) {
@@ -417,7 +401,6 @@
             cantTexto.textContent = '0 seleccionados';
         }
 
-        // Envío de MOVER en lote (Inyecta carpetas y marcadores seleccionados)
         if (formMoverLote) {
             formMoverLote.addEventListener('submit', function(e) {
                 const marcadoresSel = document.querySelectorAll('.chk-marcador:checked');
@@ -448,7 +431,6 @@
             });
         }
 
-        // Envío de BORRAR en lote (Exclusivo para marcadores)
         if (formEliminarLote) {
             formEliminarLote.addEventListener('submit', function(e) {
                 const marcadoresSel = document.querySelectorAll('.chk-marcador:checked');

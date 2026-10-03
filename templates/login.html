@@ -4,10 +4,21 @@
 {% block contenido %}
 <div class="login-wrapper">
     <div class="login-card">
-        <div class="login-header">
-            <div class="login-badge">PBM</div>
-            <h1 class="login-titulo">Marcadores Privados</h1>
-            <p class="login-creditos">v{{ app_version }}</p>
+        <!-- Cabecera de marca con el icono central idéntico a PCM -->
+        <div class="login-header" style="text-align: center; margin-bottom: 24px;">
+            <div style="display: flex; justify-content: center; margin-bottom: 16px;">
+                <img src="{{ url_for('static', filename='icon.svg') }}" 
+                     alt="PBM Logo" 
+                     style="width: 72px; height: 72px; border-radius: 18px; filter: drop-shadow(0 0 14px rgba(56, 189, 248, 0.35));">
+            </div>
+
+            <!-- Fila con Insignia PBM y Título juntos -->
+            <div style="display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;">
+                <span class="login-badge" style="margin: 0;">PBM</span>
+                <h1 class="login-titulo" style="margin: 0; font-size: 1.55rem; font-weight: 700; letter-spacing: -0.5px;">PrivateBookmarkManager</h1>
+            </div>
+
+            <p class="login-creditos" style="margin-top: 8px; color: #64748b; font-size: 0.85rem;">v{{ app_version }}</p>
         </div>
 
         {% if mostrar_contrasena_inicial %}
@@ -64,14 +75,14 @@
             </div>
         {% endif %}
 
-        <!-- Formulario de acceso con contenedor relativo para el botón de visibilidad -->
+        <!-- Formulario de acceso -->
         <form method="POST" class="login-form" autocomplete="off">
             <div class="login-input-grupo">
                 <div class="login-input-box">
                     <span class="login-lock-icon">🔒</span>
                     <input 
                         type="password" 
-                        id="inputPassword"
+                        id="inputPassword" 
                         name="password" 
                         placeholder="Contraseña de acceso" 
                         required 
@@ -83,7 +94,11 @@
                     </button>
                 </div>
             </div>
-            <button type="submit" class="login-btn">Entrar</button>
+            
+            <!-- Botón estilo PCM verde de confirmación -->
+            <button type="submit" class="login-btn" style="background-color: #16a34a; color: #ffffff; font-weight: 600; cursor: pointer;">
+                Entrar al Sistema
+            </button>
         </form>
 
         {% if error %}

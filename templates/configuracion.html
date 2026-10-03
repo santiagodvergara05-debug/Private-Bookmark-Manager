@@ -9,7 +9,7 @@
 
 <!-- Título y botón principal de guardado -->
 <div class="config-header">
-    <h1>⚙️ Configuración</h1>
+    <h1>⚙️ Configuración del Sistema</h1>
     <button type="submit" form="form-ajustes" class="btn-primario">💾 Guardar Cambios</button>
 </div>
 
@@ -26,11 +26,158 @@
 
 {% if guardado %}
     <div class="aviso aviso-exito">
-        ✅ Cambios guardados correctamente. Reiniciá el servidor si modificaste opciones de red o puerto.
+        ✅ Cambios guardados correctamente. Reinicia el servidor si modificaste opciones de red o puerto.
     </div>
 {% endif %}
 
-<!-- Formulario principal de ajustes -->
+{% if request.args.get('error_master') %}
+    <div class="aviso aviso-peligro">
+        ❌ Llave maestra incorrecta. Verifícala en tu archivo .env.
+    </div>
+{% endif %}
+
+<!-- ======================================================================= -->
+<!-- 1. TARJETA OPERATIVA: SINCRONIZACIÓN BYOC (E2EE AES-256)                -->
+<!-- ======================================================================= -->
+<div class="tarjeta-config">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.8rem;">
+        <div style="display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap;">
+            <h3 class="tarjeta-titulo" style="margin: 0;">🔄 Sincronización BYOC (E2EE AES-256)</h3>
+            <button type="button" class="btn-secundario btn-sm" onclick="abrirModalSync()">
+                ℹ️ Arquitectura & Reglas
+            </button>
+        </div>
+        {% if valores.get('SYNC_HABILITADO', 'false')|lower == 'true' %}
+            <span class="badge-portabilidad" style="background: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71;">
+                ● Servicio Activo
+            </span>
+        {% else %}
+            <span class="badge-portabilidad" style="background: rgba(149, 165, 166, 0.2); color: #95a5a6; border: 1px solid #7f8c8d;">
+                ○ Inactivo
+            </span>
+        {% endif %}
+    </div>
+
+    <p class="tarjeta-desc" style="margin-top: 0.5rem;">
+        Sincroniza tu base de datos (carpetas y marcadores) a través de tu nube personal (MEGA, Google Drive, OneDrive o pendrive) sin intermediarios ni servidores de terceros.
+    </p>
+
+    <!-- BANNER: METADATOS EN NUBE CORRUPTOS -->
+    {% if estado_sync == 'meta_corrupto' %}
+        <div class="aviso aviso-peligro" id="bannerMetaCorrupto" style="margin-bottom: 1.2rem;">
+            <strong>¡Alerta de Integridad en la Nube!</strong>
+            <p style="margin: 0.3rem 0 0; font-size: 0.88rem; line-height: 1.45;">
+                Se detectó un archivo <code>pbm_vault.meta</code> dañado o con formato inválido en tu carpeta compartida. Las subidas y descargas han sido bloqueadas por seguridad.
+            </p>
+        </div>
+    {% else %}
+        <div class="aviso aviso-peligro" id="bannerMetaCorrupto" style="display: none; margin-bottom: 1.2rem;">
+            <strong>¡Alerta de Integridad en la Nube!</strong>
+            <p style="margin: 0.3rem 0 0; font-size: 0.88rem; line-height: 1.45;">
+                Se detectó un archivo <code>pbm_vault.meta</code> dañado o con formato inválido en tu carpeta compartida. Las subidas y descargas han sido bloqueadas por seguridad.
+            </p>
+        </div>
+    {% endif %}
+
+    <!-- BANNER: PAQUETE ZIP EN NUBE CORRUPTO O INCOMPLETO -->
+    {% if estado_sync == 'zip_corrupto' %}
+        <div class="aviso aviso-advertencia" id="bannerZipCorrupto" style="margin-bottom: 1.2rem;">
+            <strong>¡Paquete Remoto Incompleto o Corrupto!</strong>
+            <p style="margin: 0.3rem 0 0; font-size: 0.88rem; line-height: 1.45;">
+                El archivo <code>pbm_vault.zip</code> en tu carpeta remota no coincide con la firma SHA-256 esperada. La descarga ha sido bloqueada para proteger tus datos locales.
+            </p>
+        </div>
+    {% else %}
+        <div class="aviso aviso-advertencia" id="bannerZipCorrupto" style="display: none; margin-bottom: 1.2rem;">
+            <strong>¡Paquete Remoto Incompleto o Corrupto!</strong>
+            <p style="margin: 0.3rem 0 0; font-size: 0.88rem; line-height: 1.45;">
+                El archivo <code>pbm_vault.zip</code> en tu carpeta remota no coincide con la firma SHA-256 esperada. La descarga ha sido bloqueada para proteger tus datos locales.
+            </p>
+        </div>
+    {% endif %}
+
+    {% if valores.get('SYNC_HABILITADO', 'false')|lower == 'true' and valores.get('SYNC_CARPETA') %}
+        <!-- Métricas del estado de la bóveda -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.2rem;">
+            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); padding: 0.9rem; border-radius: 8px;">
+                <div style="font-size: 0.8rem; color: #94a3b8; text-transform: uppercase;">🏷️ Revisión Local</div>
+                <div style="font-size: 1.1rem; font-weight: bold; margin-top: 4px;" id="syncRevLocalTexto">
+                    #{{ rev_local }} <small style="font-size: 0.8rem; font-weight: normal; opacity: 0.8;">({{ valores.get('SYNC_NOMBRE_DISPOSITIVO', 'Este equipo') }})</small>
+                </div>
+            </div>
+
+            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); padding: 0.9rem; border-radius: 8px;">
+                <div style="font-size: 0.8rem; color: #94a3b8; text-transform: uppercase;">☁️ Revisión en Nube</div>
+                <div style="font-size: 1.1rem; font-weight: bold; margin-top: 4px;" id="syncRevNubeTexto">
+                    {% if estado_sync == 'meta_corrupto' %}
+                        <span style="color: #ff5252;">Metadatos dañados</span>
+                    {% elif meta_remoto %}
+                        #{{ rev_remota }} <small style="font-size: 0.8rem; font-weight: normal; opacity: 0.8;">(De: {{ meta_remoto.get('ultimo_equipo', 'Desconocido') }})</small>
+                    {% else %}
+                        Sin bóveda en la nube
+                    {% endif %}
+                </div>
+            </div>
+
+            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); padding: 0.9rem; border-radius: 8px;">
+                <div style="font-size: 0.8rem; color: #94a3b8; text-transform: uppercase;">📡 Estado del Vínculo</div>
+                <div style="font-size: 1rem; font-weight: bold; margin-top: 4px; display: flex; align-items: center; gap: 6px;">
+                    <span id="syncEstadoIcono">
+                        {% if estado_sync == 'al_dia' %}✅
+                        {% elif estado_sync == 'pendiente_descarga' %}📥
+                        {% elif estado_sync == 'adelantado_local' %}📤
+                        {% elif estado_sync == 'meta_corrupto' %}❌
+                        {% elif estado_sync == 'zip_corrupto' %}⚠️
+                        {% else %}⚠️{% endif %}
+                    </span>
+                    <span id="syncEstadoTexto">
+                        {% if estado_sync == 'al_dia' %}Al día con la nube
+                        {% elif estado_sync == 'pendiente_descarga' %}Actualización remota disponible
+                        {% elif estado_sync == 'adelantado_local' %}Cambios locales por subir
+                        {% elif estado_sync == 'sin_boveda_remota' %}Lista para primera subida
+                        {% elif estado_sync == 'meta_corrupto' %}Bóveda remota dañada
+                        {% elif estado_sync == 'zip_corrupto' %}Paquete remoto corrupto
+                        {% else %}Carpeta no accesible{% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botones operativos de Sincronización -->
+        <div style="display: flex; gap: 0.8rem; flex-wrap: wrap;">
+            <button type="button" class="btn-secundario" id="btnComprobarSync" onclick="comprobarEstadoNube()" style="flex: 1; min-width: 170px;">
+                🔄 Comprobar Nube
+            </button>
+
+            <form method="POST" action="{{ url_for('marcadores.sync_subir_boveda') }}" style="flex: 1.5; min-width: 220px; margin: 0;">
+                <button type="submit" id="btnSubirBovedaTop" class="btn-primario" style="width: 100%;"
+                        {% if estado_sync in ['pendiente_descarga', 'meta_corrupto', 'zip_corrupto'] %}
+                            disabled title="Subida bloqueada por seguridad"
+                        {% endif %}>
+                    📤 Subir Bóveda Cifrada
+                </button>
+            </form>
+
+            <form method="POST" action="{{ url_for('marcadores.sync_descargar_boveda') }}" style="flex: 1.5; min-width: 220px; margin: 0;"
+                  onsubmit="return confirm('¿Descargar y aplicar la bóveda de la nube? Tu base local actual se respaldará como marcadores.db.pre_sync antes de sobreescribirse.');">
+                <button type="submit" id="btnDescargarSync" class="btn-secundario" style="width: 100%;"
+                        {% if estado_sync not in ['pendiente_descarga', 'al_dia'] or estado_sync in ['meta_corrupto', 'zip_corrupto'] %}
+                            disabled title="No hay bóveda remota para descargar"
+                        {% endif %}>
+                    📥 Descargar y Aplicar
+                </button>
+            </form>
+        </div>
+    {% else %}
+        <div class="aviso aviso-advertencia" style="margin-bottom: 0;">
+            ℹ️ La sincronización está desactivada o no tiene carpeta configurada. Desbloquea la configuración crítica abajo para habilitarla y seleccionar tu carpeta de nube.
+        </div>
+    {% endif %}
+</div>
+
+<!-- ======================================================================= -->
+<!-- 2. FORMULARIO PRINCIPAL DE AJUSTES DEL SISTEMA                         -->
+<!-- ======================================================================= -->
 <form method="POST" id="form-ajustes" class="form-config-panel">
     
     <!-- Tarjeta: Preferencias Generales -->
@@ -56,17 +203,19 @@
         </div>
     </div>
 
-    <!-- Tarjeta: Ajustes Críticos del Sistema -->
+    <!-- Tarjeta: Ajustes Críticos del Sistema y Motor BYOC -->
     <div class="tarjeta-config {% if not desbloqueo_critico_activo %}tarjeta-bloqueada{% endif %}">
-        <h3 class="tarjeta-titulo">🔒 Configuración Crítica del Sistema</h3>
+        <h3 class="tarjeta-titulo">🔒 Configuración Crítica del Servidor & Sincronización</h3>
         
         {% if desbloqueo_critico_activo %}
             <div class="aviso aviso-exito" style="margin-top: 8px;">
                 🔓 Sesión crítica activa. Expira en <b id="texto-contador" data-segundos="{{ desbloqueo_segundos_restantes | default(0) }}">{{ (desbloqueo_segundos_restantes // 60) }} min {{ (desbloqueo_segundos_restantes % 60) }} seg</b>.
             </div>
 
+            <h4 style="margin: 1.4rem 0 0.6rem; color: #38bdf8;">🌐 Red y Acceso</h4>
+
             <div class="campo-grupo">
-                <label>Nueva contraseña de acceso (dejar vacío para mantener actual):</label>
+                <label>Nueva contraseña de acceso (dejar vacío para mantener la actual):</label>
                 <input type="password" name="password" placeholder="Nueva contraseña...">
             </div>
 
@@ -98,16 +247,150 @@
                     Modo registro detallado en consola (Log mode)
                 </label>
             </div>
+
+            <!-- SECCIÓN CRÍTICA DE SINCRONIZACIÓN BYOC -->
+            <div style="display: flex; align-items: center; justify-content: space-between; margin: 2rem 0 0.8rem; flex-wrap: wrap; gap: 0.5rem; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 1.5rem;">
+                <h4 style="margin: 0; color: #38bdf8;">🔄 Ajustes del Motor de Sincronización BYOC</h4>
+                <button type="button" class="btn-secundario btn-sm" onclick="abrirModalSync()">
+                    ℹ️ Ver Arquitectura & Reglas
+                </button>
+            </div>
+
+            <div class="lista-checkboxes" style="margin-bottom: 1.2rem;">
+                <label class="label-checkbox">
+                    <input type="checkbox" name="sync_habilitado" id="checkSyncHabilitado"
+                           {% if valores.get('SYNC_HABILITADO', 'false')|lower == 'true' %}checked{% endif %}
+                           onchange="alternarCamposSync()">
+                    <strong>Habilitar motor de sincronización BYOC</strong>
+                </label>
+            </div>
+
+            <!-- CONTENEDOR DE CAMPOS DEPENDIENTES DE SYNC -->
+            <div id="contenedorSyncCampos">
+                <div class="campo-grupo">
+                    <label>Carpeta local de sincronización (Nube / Pendrive):</label>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <input type="text" id="inputSyncCarpeta" name="sync_carpeta" value="{{ valores.get('SYNC_CARPETA', '') }}"
+                               placeholder="Haz clic en Examinar para seleccionar tu carpeta de nube..." style="flex: 1;">
+                        <button type="button" class="btn-secundario" id="btnExaminarSync" onclick="explorarCarpetaSync()" style="white-space: nowrap; padding: 0.6rem 1rem;">
+                            📂 Examinar...
+                        </button>
+                    </div>
+                    <small style="opacity: 0.75; display: block; margin-top: 4px;" id="syncCarpetaFeedback">
+                        Selecciona tu carpeta de MEGA, Drive o OneDrive. PBM creará automáticamente la subcarpeta <code>PBM_Sync</code>.
+                    </small>
+                </div>
+
+                <div class="campo-grupo">
+                    <label>Nombre identificador de este dispositivo:</label>
+                    <input type="text" name="sync_nombre_dispositivo" value="{{ valores.get('SYNC_NOMBRE_DISPOSITIVO', '') }}"
+                           placeholder="Ej: PC-Escritorio, Notebook-Trabajo">
+                </div>
+
+                <div class="campo-grupo">
+                    <label>
+                        Número de Revisión Local (SYNC_ULTIMA_REVISION):
+                        {% if meta_remoto %}
+                            <span style="color: #e67e22; font-size: 0.82rem; font-weight: normal; margin-left: 0.5rem;">
+                                🔒 Bloqueado (Vinculado a bóveda remota activa #{{ rev_remota }})
+                            </span>
+                        {% elif estado_sync == 'meta_corrupto' %}
+                            <span style="color: #ff5252; font-size: 0.82rem; font-weight: normal; margin-left: 0.5rem;">
+                                🔒 Bloqueado (Archivo .meta remoto corrupto)
+                            </span>
+                        {% else %}
+                            <span style="color: #2ecc71; font-size: 0.82rem; font-weight: normal; margin-left: 0.5rem;">
+                                🔓 Editable (Carpeta limpia)
+                            </span>
+                        {% endif %}
+                    </label>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        {% if meta_remoto or estado_sync == 'meta_corrupto' %}
+                            <input type="number" name="sync_ultima_revision" id="inputSyncRevision"
+                                   value="{{ valores.get('SYNC_ULTIMA_REVISION', '0') }}" min="0" class="input-corto"
+                                   readonly style="background: rgba(255, 255, 255, 0.05); cursor: not-allowed;">
+                        {% else %}
+                            <input type="number" name="sync_ultima_revision" id="inputSyncRevision"
+                                   value="{{ valores.get('SYNC_ULTIMA_REVISION', '0') }}" min="0" class="input-corto">
+                            <button type="button" class="btn-secundario btn-sm" onclick="document.getElementById('inputSyncRevision').value = '0'" title="Reiniciar a 0">
+                                🔄 Resetear a #0
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="campo-grupo">
+                    <label>Modo de Cifrado:</label>
+                    <select name="sync_modo_cifrado" id="selectSyncModoCifrado" onchange="alternarModoCifrado()">
+                        <option value="auto" {% if valores.get('SYNC_MODO_CIFRADO', 'auto') == 'auto' %}selected{% endif %}>
+                            Cifrado Estándar AES-256 (Recomendado)
+                        </option>
+                        <option value="libre" {% if valores.get('SYNC_MODO_CIFRADO') == 'libre' %}selected{% endif %}>
+                            Sin Cifrado (Paquete ZIP abierto para uso local / pendrive)
+                        </option>
+                    </select>
+                </div>
+
+                <div class="campo-grupo" id="bloqueClaveSync">
+                    <label>
+                        Clave de Cifrado AES-256 (SYNC_CLAVE):
+                        <span id="badgeModoLibre" style="display: none; color: #e67e22; font-size: 0.8rem; margin-left: 0.5rem;">
+                            ⚠️ Innecesaria en modo "Sin Cifrado"
+                        </span>
+                    </label>
+
+                    <div style="background: rgba(56, 189, 248, 0.08); border-left: 3px solid #38bdf8; padding: 0.6rem 0.85rem; border-radius: 4px; margin-bottom: 0.8rem; font-size: 0.84rem; color: #cbd5e1;">
+                        💡 <strong>¿Vinculando un segundo equipo?</strong> Selecciona <em>✏️ Clave Personalizada Manual</em>, pega aquí la clave generada en tu equipo principal y presiona <em>🔒 Bloquear</em>.
+                    </div>
+
+                    <div style="display: flex; gap: 1.5rem; margin-bottom: 0.6rem; align-items: center; flex-wrap: wrap;">
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 0.4rem; font-size: 0.88rem;">
+                            <input type="radio" name="modo_input_clave" id="radioClaveAuto" value="auto" onchange="cambiarModoClave('auto')">
+                            <span>🎲 Clave Criptográfica del Sistema</span>
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 0.4rem; font-size: 0.88rem;">
+                            <input type="radio" name="modo_input_clave" id="radioClaveManual" value="manual" onchange="cambiarModoClave('manual')">
+                            <span>✏️ Clave Personalizada Manual</span>
+                        </label>
+                    </div>
+
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <input type="text" id="inputSyncClave" name="sync_clave" value="{{ valores.get('SYNC_CLAVE', '') }}"
+                               placeholder="Clave de cifrado..." style="flex: 1; font-family: monospace;">
+
+                        <button type="button" class="btn-secundario" id="btnCopiarClave" onclick="copiarClaveAlPortapapeles()" title="Copiar clave">
+                            📋 Copiar
+                        </button>
+                        <button type="button" class="btn-secundario" id="btnCandadoManual" onclick="toggleCandadoManual()" style="display: none;">
+                            🔒 Bloquear
+                        </button>
+                        <button type="button" class="btn-secundario" id="btnRegenerarClave" onclick="solicitarRotacionAleatoria()" title="Generar nueva clave de 256 bits">
+                            🔄 Regenerar Nueva
+                        </button>
+                    </div>
+                </div>
+
+                <div class="lista-checkboxes">
+                    <label class="label-checkbox">
+                        <input type="checkbox" name="sync_auto_aplicar"
+                               {% if valores.get('SYNC_AUTO_APLICAR', 'false')|lower == 'true' %}checked{% endif %}>
+                        Auto-aplicar revisiones nuevas al arrancar el servidor si hay una versión superior en la nube
+                    </label>
+                </div>
+            </div>
+
         {% else %}
             <p class="tarjeta-desc">Opciones avanzadas (contraseña, alcance de red y telemetría) protegidas contra alteraciones accidentales.</p>
             <div class="aviso aviso-advertencia">
-                🔒 Sección bloqueada. Desbloqueá con tu Llave Maestra más abajo para modificar estos valores.
+                🔒 Sección bloqueada. Desbloquea con tu Llave Maestra más abajo para modificar estos valores.
             </div>
         {% endif %}
     </div>
 </form>
 
-<!-- Tarjeta: Gestión de Desbloqueo Crítico (Master Key) -->
+<!-- ======================================================================= -->
+<!-- 3. TARJETA: GESTIÓN DE DESBLOQUEO CRÍTICO (MASTER KEY)                 -->
+<!-- ======================================================================= -->
 <div class="tarjeta-config">
     <h3 class="tarjeta-titulo">🔑 Llave Maestra (Master Key)</h3>
     {% if desbloqueo_critico_activo %}
@@ -116,19 +399,16 @@
             <button type="submit" class="btn-secundario">🔒 Bloquear configuración crítica ahora</button>
         </form>
     {% else %}
-        <p class="tarjeta-desc">Ingresá la MASTER_KEY configurada en tu archivo <code>.env</code> para habilitar cambios críticos durante 2 minutos.</p>
-        {% if request.args.get('error_master') %}
-            <div class="aviso aviso-peligro">❌ Llave maestra incorrecta. Verificala en tu archivo .env.</div>
-        {% endif %}
+        <p class="tarjeta-desc">Ingresa la MASTER_KEY configurada en tu archivo <code>.env</code> para habilitar cambios críticos durante 2 minutos.</p>
         <form method="POST" action="{{ url_for('marcadores.desbloquear_critico') }}" class="form-en-linea">
-            <input type="password" name="master_key" placeholder="Pegá la MASTER_KEY aquí" required style="width: 280px;">
+            <input type="password" name="master_key" placeholder="Pega la MASTER_KEY aquí" required style="width: 280px;">
             <button type="submit" class="btn-secundario">🔓 Desbloquear</button>
         </form>
     {% endif %}
 </div>
 
 <!-- ======================================================================= -->
-<!-- TARJETA REDISEÑADA: COPIAS DE SEGURIDAD & PORTABILIDAD (DUAL-THEME)     -->
+<!-- 4. TARJETA: COPIAS DE SEGURIDAD & PORTABILIDAD (DUAL-THEME)            -->
 <!-- ======================================================================= -->
 <div class="tarjeta-config">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
@@ -136,7 +416,7 @@
         <span class="badge-portabilidad">Tope 25 MB</span>
     </div>
     <p class="tarjeta-desc" style="margin-top: 0.4rem;">
-        Exportá o restaurá tus marcadores. El sistema admite respaldos completos en <strong>JSON</strong> o colecciones universales en <strong>HTML</strong> compatibles con todos los navegadores.
+        Exporta o restaura tus marcadores. El sistema admite respaldos completos en <strong>JSON</strong> o colecciones universales en <strong>HTML</strong> compatibles con todos los navegadores.
     </p>
 
     <div class="backup-dual-grid">
@@ -193,7 +473,9 @@
     </div>
 </div>
 
-<!-- Tarjeta: Seguridad de Sesiones -->
+<!-- ======================================================================= -->
+<!-- 5. TARJETA: SEGURIDAD DE SESIONES                                      -->
+<!-- ======================================================================= -->
 <div class="tarjeta-config">
     <h3 class="tarjeta-titulo">🛡️ Seguridad de Sesiones</h3>
     <p class="tarjeta-desc">Regenera la llave criptográfica interna de Flask cerrando de inmediato la sesión en todos los navegadores y dispositivos de la red.</p>
@@ -203,7 +485,9 @@
     </form>
 </div>
 
-<!-- Tarjeta: Zona de Peligro -->
+<!-- ======================================================================= -->
+<!-- 6. TARJETA: ZONA DE PELIGRO                                            -->
+<!-- ======================================================================= -->
 <div class="tarjeta-config tarjeta-peligro">
     <h3 class="tarjeta-titulo" style="color: var(--peligro, #ef4444);">⚠️ Zona de Peligro</h3>
     {% if desbloqueo_critico_activo %}
@@ -213,36 +497,132 @@
             <button type="submit" class="btn-peligro">🗑️ Borrar toda la base de datos</button>
         </form>
     {% else %}
-        <p class="tarjeta-desc" style="opacity: 0.75;">Desbloqueá la configuración crítica con tu Llave Maestra arriba para habilitar el vaciado total.</p>
+        <p class="tarjeta-desc" style="opacity: 0.75;">Desbloquea la configuración crítica con tu Llave Maestra arriba para habilitar el vaciado total.</p>
     {% endif %}
 </div>
 
+<!-- ================================================================= -->
+<!-- VENTANA MODAL: GUÍA DE CONFIGURACIÓN BYOC MULTINUBE & REGLAS       -->
+<!-- ================================================================= -->
+<div id="modalSyncHelp" class="modal-overlay" onclick="cerrarModalSync(event)" style="display: none;">
+    <div class="modal-caja" onclick="event.stopPropagation()" style="max-width: 700px; text-align: left;">
+        <div class="modal-header">
+            <h3 class="modal-titulo">☁️️ ¿Cómo funciona BYOC (Bring Your Own Cloud)?</h3>
+            <button type="button" class="btn-cerrar-modal" onclick="cerrarModalSync()">&times;</button>
+        </div>
+        
+        <div class="modal-cuerpo" style="max-height: 75vh; overflow-y: auto;">
+            <p>
+                <strong>PrivateBookmarkManager</strong> opera bajo el principio estricto de <strong>Zero-Knowledge Encryption</strong>. No depende de intermediarios, APIs propietarias ni servidores de terceros. Los datos se empaquetan y cifran localmente con el algoritmo <strong>AES-256</strong> mediante <em>pyzipper</em>, utilizando tu cliente de almacenamiento preferido exclusivamente como medio de transporte seguro.
+            </p>
 
+            <h4>✨ ¡Configuración Automática en un solo clic!</h4>
+            <p style="margin-bottom: 0.4rem;">
+                No necesitas crear carpetas manualmente ni copiar rutas engorrosas:
+            </p>
+            <ol style="padding-left: 1.2rem; margin: 0.4rem 0 1rem; line-height: 1.6;">
+                <li>Desbloquea la configuración con tu <strong>Master Key</strong>.</li>
+                <li>Haz clic en el botón <strong>«📂 Examinar...»</strong>.</li>
+                <li>Selecciona la carpeta base de tu servicio en el explorador del sistema.</li>
+                <li><strong>PBM creará automáticamente la subcarpeta <code>PBM_Sync</code></strong> en tu disco y la dejará lista para operar.</li>
+            </ol>
+
+            <h4>📁 Rutas y Ejemplos de Configuración por Servicio:</h4>
+
+            <div class="cloud-provider-card">
+                <strong>🟦 Microsoft OneDrive</strong>
+                <p>Selecciona tu carpeta personal de OneDrive y PBM creará automáticamente la subcarpeta:</p>
+                <code>C:\Users\TuUsuario\OneDrive\PBM_Sync</code>
+            </div>
+
+            <div class="cloud-provider-card">
+                <strong>🔴 MEGAsync</strong>
+                <p>Selecciona tu directorio raíz sincronizado de MEGA:</p>
+                <code>C:\Users\TuUsuario\MEGAsync\PBM_Sync</code>
+            </div>
+
+            <div class="cloud-provider-card">
+                <strong>🔵 Google Drive (App de escritorio)</strong>
+                <p>Apunta hacia la unidad virtual asignada:</p>
+                <code>G:\Mi unidad\PBM_Sync</code>
+            </div>
+
+            <div class="cloud-provider-card">
+                <strong>📦 Dropbox</strong>
+                <p>Selecciona tu carpeta local de Dropbox:</p>
+                <code>C:\Users\TuUsuario\Dropbox\PBM_Sync</code>
+            </div>
+
+            <div class="cloud-provider-card">
+                <strong>⚡ Syncthing / Pendrive USB / Red LAN Compartida</strong>
+                <p>Compatible con cualquier volumen o unidad accesible en el sistema operativo:</p>
+                <code>E:\PBM_Sync</code> o <code>\\ServidorLocal\Compartido\PBM_Sync</code>
+            </div>
+
+            <h4>🛡️ Reglas de Oro de Sincronización:</h4>
+            <ul style="padding-left: 1.2rem; margin-top: 0.4rem; line-height: 1.6;">
+                <li style="margin-bottom: 0.5rem;">
+                    <strong>Clave de cifrado idéntica:</strong> El valor de <code>SYNC_CLAVE</code> debe ser exactamente el mismo en tu PC y tu notebook para poder abrir y descifrar la bóveda.
+                </li>
+                <li style="margin-bottom: 0.5rem;">
+                    <strong>Rutas físicas independientes:</strong> En cada equipo la carpeta de la nube puede estar en discos o rutas distintas. Cada equipo solo apunta a donde su propio cliente de nube sincroniza.
+                </li>
+                <li style="margin-bottom: 0.5rem;">
+                    <strong>Protección Anti-Atraso:</strong> Si en la nube hay una versión más reciente (<code>#Remota > #Local</code>), la subida queda estrictamente bloqueada. Debes descargar y aplicar cambios primero.
+                </li>
+                <li style="margin-bottom: 0.5rem;">
+                    <strong>Extracción Atómica y Verificación SHA-256:</strong> Antes de reemplazar tu base de datos local, el sistema valida la firma hash de <code>pbm_vault.zip</code> contra <code>pbm_vault.meta</code>. Si está dañado o incompleto, la operación se cancela sin tocar tus datos locales.
+                </li>
+                <li style="margin-bottom: 0.5rem;">
+                    <strong>Rotación de Llaves:</strong> Al regenerar una clave, la bóveda anterior en la nube se elimina y el nuevo paquete se compila automáticamente con la revisión siguiente.
+                </li>
+                <li style="margin-bottom: 0.5rem;">
+                    <strong>Control de Reseteo a Revisión #0:</strong> El contador no puede reiniciarse a voluntad mientras la nube contenga una bóveda activa o archivo <code>.meta</code> presente.
+                </li>
+            </ul>
+
+            <h4>🚑 Rescate Automático y Recuperación ante Desastres (Bootloader):</h4>
+            <div class="cloud-provider-card" style="border-left: 4px solid var(--acento);">
+                <strong style="color: var(--texto);">Recuperación de Emergencia Automática:</strong>
+                <p style="margin: 0.3rem 0 0.5rem 0;">
+                    Si al iniciar el sistema el bootloader detecta que la base de datos local (<code>marcadores.db</code>) está comprometida (archivo borrado, corrupto o aislado en cuarentena), <strong>priorizará automáticamente restaurar la última copia íntegra disponible en la nube</strong>.
+                </p>
+                <p style="margin: 0.4rem 0 0; line-height: 1.5; font-size: 0.88rem;">
+                    • <strong>Prioridad sobre la auto-sincronización:</strong> Este rescate de emergencia se ejecuta <em>incluso si la opción de auto-aplicar revisiones al arrancar está desactivada</em>, garantizando que el sistema no empiece vacío si hay datos intactos en la nube.<br>
+                    • <strong>Aislamiento en modo offline:</strong> El bootloader <em>ignorará por completo cualquier intento de auto-recuperación</em> si la sincronización se encuentra inhabilitada (<code>SYNC_HABILITADO=false</code>), operando exclusivamente en modo local limpio.
+                </p>
+            </div>
+        </div>
+
+        <div class="modal-acciones">
+            <button type="button" class="btn-primario" onclick="cerrarModalSync()">Entendido</button>
+        </div>
+    </div>
+</div>
 
 <!-- ======================================================================= -->
-<!-- MOTOR JAVASCRIPT: CONTADOR REGRESIVO Y DROPZONE INTELIGENTE             -->
+<!-- MOTOR JAVASCRIPT: CONTADOR, DROPZONE & CONTROLADORES SYNC              -->
 <!-- ======================================================================= -->
 <script>
-    // 1. Contador regresivo de sesión administrativa (Master Key)
+    // 1. Contador regresivo resiliente
     const elementoTexto = document.getElementById("texto-contador");
     if (elementoTexto) {
-        let segundosRestantes = parseInt(elementoTexto.dataset.segundos || "0", 10);
-
-        const cuentaAtras = setInterval(() => {
-            segundosRestantes--;
-
-            if (segundosRestantes <= 0) {
-                clearInterval(cuentaAtras);
+        let segs = parseInt(elementoTexto.dataset.segundos || "0", 10);
+        const finalTime = Date.now() + (segs * 1000);
+        const timer = setInterval(() => {
+            const restante = Math.ceil((finalTime - Date.now()) / 1000);
+            if (restante <= 0) {
+                clearInterval(timer);
                 window.location.reload();
             } else {
-                const min = Math.floor(segundosRestantes / 60);
-                const seg = segundosRestantes % 60;
+                const min = Math.floor(restante / 60);
+                const seg = restante % 60;
                 elementoTexto.textContent = `${min} min ${seg < 10 ? '0' : ''}${seg} seg`;
             }
         }, 1000);
     }
 
-    // 2. Dropzone Inteligente: Detección de tipo, enrutado y validación de 25 MB
+    // 2. Dropzone Inteligente (JSON / HTML)
     const inputBackup = document.getElementById('inputArchivoBackup');
     const dropzone = document.getElementById('dropzoneBackup');
     const dropzoneIcon = document.getElementById('dropzoneIcon');
@@ -250,16 +630,13 @@
     const btnRestaurar = document.getElementById('btnEjecutarRestaurar');
     const formRestaurar = document.getElementById('form-restaurar-smart');
     const alertaTamano = document.getElementById('alerta-tamano-error');
-
-    const MAX_BYTES = 25 * 1024 * 1024; // Límite estricto de 25 MB
+    const MAX_BYTES = 25 * 1024 * 1024;
 
     function procesarArchivoSeleccionado(file) {
         if (!file) return;
-
         alertaTamano.style.display = "none";
         dropzone.classList.remove("has-file", "has-error");
 
-        // Validación 1: Límite estricto de 25 MB
         if (file.size > MAX_BYTES) {
             dropzone.classList.add("has-error");
             dropzoneIcon.textContent = "⚠️";
@@ -273,27 +650,21 @@
         const nombreLower = file.name.toLowerCase();
         const tamanoKB = (file.size / 1024).toFixed(1);
 
-        // Validación 2: Clasificación de formato y auto-enrutamiento
         if (nombreLower.endsWith(".json")) {
-            // Destino endpoint JSON nativo
             formRestaurar.action = "{{ url_for('marcadores.importar') }}";
             dropzoneIcon.textContent = "📄";
             dropzoneText.innerHTML = `Listo para restaurar: <strong>${file.name}</strong><br><small>Respaldo JSON nativo · ${tamanoKB} KB</small>`;
             dropzone.classList.add("has-file");
             btnRestaurar.disabled = false;
             btnRestaurar.textContent = "⬆️ Iniciar Restauración JSON";
-
         } else if (nombreLower.endsWith(".html") || nombreLower.endsWith(".htm")) {
-            // Destino endpoint HTML estándar
             formRestaurar.action = "{{ url_for('marcadores.importar_html_ruta') }}";
             dropzoneIcon.textContent = "🌐";
             dropzoneText.innerHTML = `Listo para restaurar: <strong>${file.name}</strong><br><small>Marcadores de Navegador (HTML) · ${tamanoKB} KB</small>`;
             dropzone.classList.add("has-file");
             btnRestaurar.disabled = false;
             btnRestaurar.textContent = "⬆️ Iniciar Restauración HTML";
-
         } else {
-            // Formato no reconocido
             dropzone.classList.add("has-error");
             dropzoneIcon.textContent = "❌";
             dropzoneText.innerHTML = `<strong>Formato no admitido</strong><br><small>Solo se aceptan archivos .JSON o .HTML</small>`;
@@ -302,29 +673,257 @@
         }
     }
 
-    inputBackup.addEventListener('change', function() {
-        if (this.files && this.files.length > 0) {
-            procesarArchivoSeleccionado(this.files[0]);
+    if (inputBackup && dropzone) {
+        inputBackup.addEventListener('change', function() {
+            if (this.files && this.files.length > 0) procesarArchivoSeleccionado(this.files[0]);
+        });
+        dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+        dropzone.addEventListener('dragleave', () => { dropzone.classList.remove('drag-over'); });
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('drag-over');
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                inputBackup.files = e.dataTransfer.files;
+                procesarArchivoSeleccionado(e.dataTransfer.files[0]);
+            }
+        });
+    }
+
+    // 3. Control de Campos y Visibilidad Sync
+    function alternarCamposSync() {
+        const check = document.getElementById('checkSyncHabilitado');
+        const cont = document.getElementById('contenedorSyncCampos');
+        if (!check || !cont) return;
+        cont.style.display = check.checked ? 'block' : 'none';
+        if (check.checked) alternarModoCifrado();
+    }
+
+    function alternarModoCifrado() {
+        const selectModo = document.getElementById('selectSyncModoCifrado');
+        const bloqueClave = document.getElementById('bloqueClaveSync');
+        const badgeLibre = document.getElementById('badgeModoLibre');
+        if (!selectModo || !bloqueClave) return;
+        if (selectModo.value === 'libre') {
+            bloqueClave.style.opacity = '0.4';
+            bloqueClave.style.pointerEvents = 'none';
+            if (badgeLibre) badgeLibre.style.display = 'inline';
+        } else {
+            bloqueClave.style.opacity = '1';
+            bloqueClave.style.pointerEvents = 'auto';
+            if (badgeLibre) badgeLibre.style.display = 'none';
         }
+    }
+
+    // 4. Modales
+    function abrirModalSync() {
+        const m = document.getElementById("modalSyncHelp");
+        if (m) m.style.display = "flex";
+    }
+    function cerrarModalSync() {
+        const m = document.getElementById("modalSyncHelp");
+        if (m) m.style.display = "none";
+    }
+    function solicitarRotacionAleatoria() {
+        const m = document.getElementById("modalConfirmRotacion");
+        if (m) m.style.display = "flex";
+    }
+    function cerrarModalRotacion() {
+        const m = document.getElementById("modalConfirmRotacion");
+        if (m) m.style.display = "none";
+    }
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") { cerrarModalSync(); cerrarModalRotacion(); }
     });
 
-    // Soporte Drag & Drop
-    dropzone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropzone.classList.add('drag-over');
-    });
+    // 5. Selector nativo de carpetas
+    async function explorarCarpetaSync() {
+        const btn = document.getElementById('btnExaminarSync');
+        const input = document.getElementById('inputSyncCarpeta');
+        const fb = document.getElementById('syncCarpetaFeedback');
+        if (!btn || !input) return;
 
-    dropzone.addEventListener('dragleave', () => {
-        dropzone.classList.remove('drag-over');
-    });
-
-    dropzone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropzone.classList.remove('drag-over');
-        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            inputBackup.files = e.dataTransfer.files;
-            procesarArchivoSeleccionado(e.dataTransfer.files[0]);
+        btn.disabled = true;
+        btn.textContent = '⏳ Abriendo...';
+        try {
+            const resp = await fetch("{{ url_for('marcadores.sync_explorar_carpeta') }}", {
+                method: "POST",
+                headers: { "X-Requested-With": "XMLHttpRequest" }
+            });
+            const data = await resp.json();
+            if (data.ok && data.ruta) {
+                input.value = data.ruta;
+                if (fb) {
+                    fb.innerHTML = `✅ Carpeta lista en disco: <code>${data.ruta}</code>`;
+                    fb.style.color = '#2ecc71';
+                }
+            } else if (data.error) {
+                alert(data.error);
+            }
+        } catch (e) {
+            alert("No se pudo invocar el selector de carpetas del sistema.");
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '📂 Examinar...';
         }
+    }
+
+    // 6. Candado y modos de clave
+    const inputClave = document.getElementById('inputSyncClave');
+    const radioAuto = document.getElementById('radioClaveAuto');
+    const radioManual = document.getElementById('radioClaveManual');
+    const btnRegenerar = document.getElementById('btnRegenerarClave');
+    const btnCandado = document.getElementById('btnCandadoManual');
+    let candadoBloqueado = false;
+
+    function inicializarModoClave() {
+        if (!inputClave || !radioAuto || !radioManual) return;
+        const val = inputClave.value.trim();
+        if (/^[0-9a-fA-F]{64}$/.test(val) || val.length >= 32) {
+            radioAuto.checked = true;
+            cambiarModoClave('auto');
+        } else {
+            radioManual.checked = true;
+            cambiarModoClave('manual');
+        }
+    }
+
+    function cambiarModoClave(modo) {
+        if (!inputClave) return;
+        if (modo === 'auto') {
+            inputClave.readOnly = true;
+            inputClave.style.background = 'rgba(255, 255, 255, 0.05)';
+            inputClave.style.cursor = 'not-allowed';
+            if (btnCandado) btnCandado.style.display = 'none';
+            if (btnRegenerar) btnRegenerar.disabled = false;
+        } else {
+            if (btnRegenerar) btnRegenerar.disabled = true;
+            if (btnCandado) btnCandado.style.display = 'inline-block';
+            aplicarEstadoCandado(inputClave.value.trim() !== "");
+        }
+    }
+
+    function toggleCandadoManual() { aplicarEstadoCandado(!candadoBloqueado); }
+
+    function aplicarEstadoCandado(bloquear) {
+        candadoBloqueado = bloquear;
+        if (!inputClave || !btnCandado) return;
+        if (bloquear) {
+            inputClave.readOnly = true;
+            inputClave.style.background = 'rgba(46, 204, 113, 0.08)';
+            inputClave.style.borderColor = '#2ecc71';
+            inputClave.style.cursor = 'not-allowed';
+            btnCandado.innerHTML = '🔓 Desbloquear';
+        } else {
+            inputClave.readOnly = false;
+            inputClave.style.background = '';
+            inputClave.style.borderColor = '';
+            inputClave.style.cursor = 'text';
+            btnCandado.innerHTML = '🔒 Bloquear';
+            inputClave.focus();
+        }
+    }
+
+    function copiarClaveAlPortapapeles() {
+        if (!inputClave || !inputClave.value) return;
+        navigator.clipboard.writeText(inputClave.value).then(() => {
+            const btn = document.getElementById('btnCopiarClave');
+            const orig = btn.innerHTML;
+            btn.innerHTML = '✔ ¡Copiada!';
+            setTimeout(() => { btn.innerHTML = orig; }, 2000);
+        });
+    }
+
+    function ejecutarRotacionSegura() {
+        cerrarModalRotacion();
+        const arr = new Uint8Array(32);
+        crypto.getRandomValues(arr);
+        const hex = Array.from(arr, b => b.toString(16).padStart(2, '0')).join('');
+        inputClave.value = hex;
+        radioAuto.checked = true;
+        cambiarModoClave('auto');
+    }
+
+    // 7. Consulta asíncrona de estado de nube
+    async function comprobarEstadoNube() {
+        const btn = document.getElementById('btnComprobarSync');
+        const txtRevNube = document.getElementById('syncRevNubeTexto');
+        const txtEstado = document.getElementById('syncEstadoTexto');
+        const iconEstado = document.getElementById('syncEstadoIcono');
+        const btnDescargar = document.getElementById('btnDescargarSync');
+        const btnSubirTop = document.getElementById('btnSubirBovedaTop');
+        const bannerCorrupto = document.getElementById('bannerMetaCorrupto');
+        const bannerZipCorrupto = document.getElementById('bannerZipCorrupto');
+
+        if (!btn) return;
+        const orig = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Comprobando...';
+
+        try {
+            const resp = await fetch("{{ url_for('marcadores.sync_consultar_estado') }}", {
+                headers: { "X-Requested-With": "XMLHttpRequest" }
+            });
+            const data = await resp.json();
+
+            if (!data.habilitado || !data.carpeta_valida) {
+                if (txtEstado) txtEstado.textContent = 'Carpeta no accesible o desactivada';
+                if (iconEstado) iconEstado.textContent = '⚠️';
+                btn.innerHTML = '⚠️ Desconectado';
+            } else if (data.meta_corrupto || data.estado === 'meta_corrupto') {
+                if (bannerCorrupto) bannerCorrupto.style.display = 'block';
+                if (txtEstado) txtEstado.textContent = 'Bóveda remota dañada';
+                if (iconEstado) iconEstado.textContent = '❌';
+                if (btnSubirTop) btnSubirTop.disabled = true;
+                if (btnDescargar) btnDescargar.disabled = true;
+                btn.innerHTML = '❌ Nube dañada';
+            } else if (!data.hay_boveda) {
+                if (bannerCorrupto) bannerCorrupto.style.display = 'none';
+                if (txtRevNube) txtRevNube.textContent = 'Sin bóveda en la nube';
+                if (txtEstado) txtEstado.textContent = 'Lista para primera subida';
+                if (iconEstado) iconEstado.textContent = '⚠️';
+                if (btnDescargar) btnDescargar.disabled = true;
+                if (btnSubirTop) btnSubirTop.disabled = false;
+                btn.innerHTML = '✔ Comprobado';
+            } else {
+                if (bannerCorrupto) bannerCorrupto.style.display = 'none';
+                if (txtRevNube) txtRevNube.innerHTML = `#${data.rev_remota} <small style="font-size:0.8rem;opacity:0.8;">(De: ${data.ultimo_equipo})</small>`;
+
+                if (data.estado === 'al_dia') {
+                    if (txtEstado) txtEstado.textContent = 'Al día con la nube';
+                    if (iconEstado) iconEstado.textContent = '✅';
+                    if (btnDescargar) btnDescargar.disabled = false;
+                    if (btnSubirTop) btnSubirTop.disabled = false;
+                    btn.innerHTML = '✔ ¡Al día!';
+                } else if (data.estado === 'pendiente_descarga') {
+                    if (txtEstado) txtEstado.textContent = `Actualización remota (#${data.rev_remota})`;
+                    if (iconEstado) iconEstado.textContent = '📥';
+                    if (btnSubirTop) btnSubirTop.disabled = true;
+                    if (btnDescargar) btnDescargar.disabled = false;
+                    btn.innerHTML = '📥 ¡Hay cambios!';
+                } else if (data.estado === 'zip_corrupto') {
+                    if (bannerZipCorrupto) bannerZipCorrupto.style.display = 'block';
+                    if (txtEstado) txtEstado.textContent = 'Paquete remoto corrupto';
+                    if (iconEstado) iconEstado.textContent = '⚠️';
+                    if (btnDescargar) btnDescargar.disabled = true;
+                    if (btnSubirTop) btnSubirTop.disabled = true;
+                    btn.innerHTML = '⚠️ ZIP corrupto';
+                } else if (data.estado === 'adelantado_local') {
+                    if (txtEstado) txtEstado.textContent = 'Cambios locales por subir';
+                    if (iconEstado) iconEstado.textContent = '📤';
+                    if (btnSubirTop) btnSubirTop.disabled = false;
+                    btn.innerHTML = '📤 Local adelantado';
+                }
+            }
+        } catch (e) {
+            btn.innerHTML = '❌ Error de red';
+        } finally {
+            setTimeout(() => { btn.disabled = false; btn.innerHTML = orig; }, 2000);
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        alternarCamposSync();
+        inicializarModoClave();
     });
 </script>
 {% endblock %}
