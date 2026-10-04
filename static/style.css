@@ -103,7 +103,6 @@ ul {
     margin: 0;
 }
 
-/* Elementos de Lista / Filas */
 li {
     display: flex;
     align-items: center;
@@ -217,8 +216,14 @@ button:disabled,
     font-size: 0.82rem;
 }
 
+.flex-entre {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
 /* ==========================================================================
-   4. SISTEMA DE AVISOS Y ALERTAS
+   4. SISTEMA DE AVISOS Y ALERTAS (FLASH & ESTADO)
    ========================================================================== */
 .aviso {
     display: block;
@@ -257,19 +262,6 @@ button:disabled,
 
 body.oscuro .aviso code {
     background: rgba(255, 255, 255, 0.12);
-}
-
-.aviso-acciones {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-top: 6px;
-}
-
-.btn-link {
-    font-weight: 600;
-    text-decoration: underline;
-    color: inherit;
 }
 
 /* ==========================================================================
@@ -382,6 +374,20 @@ body.oscuro .badge-app {
     gap: 8px;
 }
 
+.encabezado-seccion {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1.8rem;
+    margin-bottom: 0.9rem;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.encabezado-seccion h3 {
+    margin: 0;
+}
+
 .carpeta-item, li.marcador-item {
     display: flex;
     justify-content: space-between;
@@ -410,6 +416,34 @@ body.oscuro .badge-app {
     align-items: center;
     gap: 8px;
     flex-shrink: 0;
+}
+
+.chk-marcador-wrap, .chk-carpeta-wrap {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 0.5rem;
+    cursor: pointer;
+}
+
+.chk-marcador, .chk-carpeta {
+    width: 17px;
+    height: 17px;
+    cursor: pointer;
+}
+
+.btn-icono-accion {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0 4px;
+    line-height: 1;
+    color: inherit;
+    transition: transform 0.1s ease;
+}
+
+.btn-icono-accion:hover {
+    transform: scale(1.15);
 }
 
 /* Contador de progreso */
@@ -501,7 +535,7 @@ body.oscuro .badge-app {
 }
 
 /* ==========================================================================
-   6. PANEL DE CONFIGURACIÓN & MÓDULO DE SINCRONIZACIÓN BYOC
+   6. PANEL DE CONFIGURACIÓN & MÉTRICAS BYOC
    ========================================================================== */
 .config-header {
     display: flex;
@@ -590,7 +624,6 @@ body.oscuro .badge-app {
     user-select: none;
 }
 
-/* Insignias de portabilidad */
 .badge-portabilidad {
     font-size: 0.75rem;
     padding: 0.25rem 0.65rem;
@@ -602,17 +635,72 @@ body.oscuro .badge-app {
     border: 1px solid var(--borde);
 }
 
-/* Adaptación dinámica para las tarjetas métricas de sincronización */
-.tarjeta-config div[style*="grid-template-columns"] > div {
-    background: var(--fondo-subtarjeta) !important;
-    border: 1px solid var(--borde) !important;
+/* Grilla de métricas de sincronización */
+.sync-metricas-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
 }
 
-/* Tarjeta informativa de advertencia en bloque de claves */
-#bloqueClaveSync div[style*="border-left"] {
-    color: var(--texto) !important;
-    background: var(--acento-suave) !important;
-    border-left-color: var(--acento) !important;
+.sync-metrica-card {
+    padding: 1rem 1.2rem;
+    border-radius: 8px;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+body:not(.oscuro) .sync-metrica-card {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+body:not(.oscuro) .sync-metrica-head {
+    color: #475569;
+}
+
+body.oscuro .sync-metrica-card {
+    background: #141822;
+    border: 1px solid #262c38;
+}
+
+body.oscuro .sync-metrica-head {
+    color: #94a3b8;
+}
+
+.sync-metrica-head {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+
+.sync-metrica-valor {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--texto);
+}
+
+.sync-metrica-valor small {
+    font-size: 0.82rem;
+    font-weight: normal;
+    opacity: 0.85;
+}
+
+.sync-metrica-card.sync-metrica-centro {
+    grid-column: 1 / -1;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+@media (max-width: 580px) {
+    .sync-metricas-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* Grilla dual de respaldo e importación */
@@ -689,7 +777,6 @@ body.oscuro .badge-app {
     color: var(--texto-suave);
 }
 
-/* Área Dropzone interactiva */
 .dropzone-area {
     border: 2px dashed var(--borde);
     border-radius: var(--radio);
@@ -823,6 +910,38 @@ body.oscuro .badge-app {
     line-height: 1.6;
 }
 
+.modal-texto-principal {
+    margin-top: 0;
+    font-size: 0.98rem;
+    line-height: 1.4;
+}
+
+.modal-aviso-conteo {
+    background: var(--acento-suave);
+    border: 1px solid var(--borde);
+    color: var(--acento);
+    padding: 0.65rem 0.85rem;
+    border-radius: var(--radio);
+    font-size: 0.88rem;
+    margin-bottom: 1rem;
+}
+
+.modal-opcion-borrado {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    cursor: pointer;
+    margin: 0.8rem 0;
+    font-size: 0.92rem;
+}
+
+.modal-explicacion {
+    font-size: 0.82rem;
+    opacity: 0.75;
+    margin-bottom: 0;
+    line-height: 1.35;
+}
+
 .modal-cuerpo code {
     background: var(--fondo-subtarjeta);
     color: var(--acento);
@@ -839,6 +958,78 @@ body.oscuro .badge-app {
     padding: 0.9rem 1.4rem;
     background: var(--fondo-subtarjeta);
     border-top: 1px solid var(--borde);
+}
+
+/* Aislamiento de listas dentro del modal */
+.modal-cuerpo ul,
+.modal-cuerpo ol {
+    list-style: inherit !important;
+    padding-left: 1.5rem !important;
+    margin: 0.6rem 0 1.2rem 0 !important;
+}
+
+.modal-cuerpo ol {
+    list-style-type: decimal !important;
+}
+
+.modal-cuerpo ul {
+    list-style-type: disc !important;
+}
+
+.modal-cuerpo li {
+    display: list-item !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin-bottom: 0.65rem !important;
+    color: var(--texto) !important;
+    line-height: 1.6 !important;
+    box-shadow: none !important;
+}
+
+.modal-cuerpo li strong {
+    color: var(--texto) !important;
+}
+
+/* Tarjetas de servicios en la guía modal */
+.cloud-provider-card {
+    background: var(--fondo-subtarjeta);
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    padding: 0.9rem 1.15rem;
+    margin-bottom: 0.85rem;
+}
+
+.cloud-provider-card strong {
+    color: var(--texto);
+    display: block;
+    margin-bottom: 0.35rem;
+    font-size: 0.95rem;
+}
+
+.cloud-provider-card p {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.86rem;
+    color: var(--texto-suave);
+    line-height: 1.45;
+}
+
+.cloud-provider-card code {
+    background: #090d16;
+    color: #2ecc71;
+    border: 1px solid rgba(46, 204, 113, 0.25);
+    padding: 0.3rem 0.65rem;
+    border-radius: 5px;
+    font-family: monospace;
+    font-size: 0.84rem;
+    display: inline-block;
+    word-break: break-all;
+}
+
+.cloud-provider-card.card-bootloader {
+    border-left: 4px solid var(--acento);
+    background: var(--acento-suave);
 }
 
 /* ==========================================================================
@@ -982,7 +1173,6 @@ body.oscuro .badge-app {
     font-size: 0.95rem;
 }
 
-/* Panel de credenciales temporales */
 .panel-credenciales-primer-uso {
     background: var(--advertencia-fondo);
     border: 1px solid var(--advertencia-borde);
@@ -1033,90 +1223,97 @@ body.oscuro .badge-app {
 }
 
 /* ==========================================================================
-   CORRECCIÓN VISUAL: MODAL DE REGLAS BYOC (AISLAMIENTO DE LISTAS Y TARJETAS)
+   10. ENCABEZADO Y PASTILLA DE ESTADO DE SINCRONIZACIÓN (HEADER)
    ========================================================================== */
-
-/* 1. Neutralizar el estilo global de 'li' dentro del modal */
-.modal-cuerpo ul,
-.modal-cuerpo ol {
-    list-style: inherit !important;
-    padding-left: 1.5rem !important;
-    margin: 0.6rem 0 1.2rem 0 !important;
+.encabezado-principal {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
 }
 
-.modal-cuerpo ol {
-    list-style-type: decimal !important;
+.titulo-con-badge {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
 }
 
-.modal-cuerpo ul {
-    list-style-type: disc !important;
+.icono-app-header {
+    width: 32px !important;
+    height: 32px !important;
+    max-width: 32px !important;
+    max-height: 32px !important;
+    border-radius: 6px;
+    object-fit: contain;
+    flex-shrink: 0;
 }
 
-.modal-cuerpo li {
-    display: list-item !important;
-    background: transparent !important;
-    border: none !important;
-    border-radius: 0 !important;
-    padding: 0 !important;
-    margin-bottom: 0.65rem !important;
-    color: var(--texto) !important;
-    line-height: 1.6 !important;
-    box-shadow: none !important;
+.pill-sync {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-decoration: none !important;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
-.modal-cuerpo li strong {
-    color: var(--texto) !important;
+.pill-sync:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-/* 2. Tarjetas individuales de proveedores de nube (OneDrive, MEGA, Google Drive) */
-.cloud-provider-card {
-    background: var(--fondo-subtarjeta) !important;
-    border: 1px solid var(--borde) !important;
-    border-radius: 8px !important;
-    padding: 0.9rem 1.15rem !important;
-    margin-bottom: 0.85rem !important;
-    box-shadow: none !important;
+.pill-sync.alerta {
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    color: #f59e0b;
 }
 
-body.oscuro .cloud-provider-card {
-    background: #141822 !important;
-    border-color: #272f3d !important;
+.pill-sync.alerta:hover {
+    background: rgba(245, 158, 11, 0.2);
+    border-color: #f59e0b;
 }
 
-.cloud-provider-card strong {
-    color: var(--texto) !important;
-    display: block !important;
-    margin-bottom: 0.35rem !important;
-    font-size: 0.95rem !important;
+.pill-sync.ok {
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.35);
+    color: #22c55e;
 }
 
-.cloud-provider-card p {
-    margin: 0 0 0.5rem 0 !important;
-    font-size: 0.86rem !important;
-    color: var(--texto-suave) !important;
-    line-height: 1.45 !important;
+.pill-sync.ok:hover {
+    background: rgba(34, 197, 94, 0.18);
+    border-color: #22c55e;
 }
 
-.cloud-provider-card code {
-    background: #090d16 !important;
-    color: #2ecc71 !important;
-    border: 1px solid rgba(46, 204, 113, 0.25) !important;
-    padding: 0.3rem 0.65rem !important;
-    border-radius: 5px !important;
-    font-family: monospace !important;
-    font-size: 0.84rem !important;
-    display: inline-block !important;
-    word-break: break-all !important;
+.pill-sync-icono {
+    font-size: 0.95rem;
+    line-height: 1;
 }
 
-/* 3. Tarjeta destacada de recuperación del Bootloader */
-.cloud-provider-card.card-bootloader {
-    border-left: 4px solid var(--acento) !important;
-    background: rgba(56, 189, 248, 0.05) !important;
+.sync-dot-pulse {
+    font-size: 0.75rem;
+    color: #f59e0b;
+    animation: pulsoSync 1.6s infinite ease-in-out;
 }
 
-body.oscuro .cloud-provider-card.card-bootloader {
-    background: rgba(56, 189, 248, 0.07) !important;
-    border-color: #272f3d !important;
-    border-left-color: var(--acento) !important;
+.sync-dot-estatico {
+    font-size: 0.75rem;
+    color: #22c55e;
+}
+
+@keyframes pulsoSync {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.4;
+        transform: scale(1.25);
+    }
 }

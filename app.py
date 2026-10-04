@@ -5,20 +5,19 @@ PBM PRIVATE BOOKMARK MANAGER - NÚCLEO DEL SERVIDOR Y BOOTLOADER GEN 3 (APP.PY)
 Punto de entrada principal del sistema de marcadores privados blindado.
 Responsabilidades de arquitectura:
 1. Detección de runtime (Desarrollo vs Binario congelado PyInstaller).
-2. Estabilización de directorio de trabajo físico (CWD) para accesos directos.
+2. Sanitización binaria temprana y aislamiento preventivo de .env corrupto.
 3. Inicialización del framework Flask y endurecimiento de cookies de sesión.
 4. Telemetría de arranque estilo init/kernel de Linux con formateo ANSI.
-5. Motor de autorreparación, sanitización atómica y aislamiento de .env corrupto.
-6. Saneamiento del sistema de archivos local, purga de huérfanos y aislamiento WAL.
-7. Auditoría exhaustiva de integridad SQLite (Magic Header, Tablas 'carpetas'/'marcadores').
-8. Protocolo de Disaster Recovery y Rescate Automático desde Bóvedas BYOC (E2EE AES-256).
-9. Auditoría cruzada de sincronización condicionada al modo operativo.
-10. Resolución dinámica de interfaz local/LAN y puesta en marcha del servidor WSGI.
+5. Saneamiento del sistema de archivos local, purga de huérfanos y aislamiento WAL.
+6. Auditoría exhaustiva de integridad SQLite (Magic Header, Tablas 'carpetas'/'marcadores').
+7. Protocolo de Disaster Recovery y Rescate Automático desde Bóvedas BYOC (E2EE AES-256).
+8. Auditoría cruzada de sincronización condicionada al modo operativo.
+9. Resolución dinámica de interfaz local/LAN y puesta en marcha del servidor WSGI.
 ==============================================================================
 """
 
 # ==============================================================================
-# SECCIÓN 1: IMPORTACIONES Y RESOLUCIÓN DE RUTAS DEL SISTEMA
+# SECCIÓN 1: IMPORTACIONES Y CONSTANTES DE DIRECTORIO
 # ==============================================================================
 import os
 import sys
@@ -32,17 +31,189 @@ import threading
 import hashlib
 from datetime import datetime
 
-# Componentes del framework web y gestión de entorno
 from flask import Flask, jsonify, request
 from dotenv import load_dotenv, dotenv_values, set_key
 
-# Módulos internos de la arquitectura PBM
+# Detección de empaquetado PyInstaller
+ES_EXE = getattr(sys, "frozen", False)
+if ES_EXE:
+    DIRECTORIO_RAIZ = os.path.dirname(sys.executable)
+    BUNDLE_DIR = getattr(sys, "_MEIPASS", DIRECTORIO_RAIZ)
+else:
+    DIRECTORIO_RAIZ = os.path.dirname(os.path.abspath(__file__))
+    BUNDLE_DIR = DIRECTORIO_RAIZ
+
+os.chdir(DIRECTORIO_RAIZ)
+
+ENV_PATH = os.path.join(DIRECTORIO_RAIZ, ".env")
+DB_PATH = os.path.join(DIRECTORIO_RAIZ, "marcadores.db")
+BACKUPS_DIR = os.path.join(DIRECTORIO_RAIZ, "backups")
+
+
+# ==============================================================================
+# SECCIÓN 2: GESTOR DE RESILIENCIA Y AUTORREPARACIÓN BINARIA (.ENV)
+# ==============================================================================
+VALORES_PREDETERMINADOS = {
+    "SISTEMA_INICIALIZADO": "false",
+    "SECRET_KEY": lambda: secrets.token_hex(32),
+    "MASTER_KEY": lambda: secrets.token_hex(32),
+    "APP_PASSWORD": "cambiame",
+    "CONTRASENA_MOSTRADA": "false",
+    "MOSTRAR_FAVICONS": "true",
+    "ABRIR_NUEVA_PESTANA": "true",
+    "AUTO_ABRIR_NAVEGADOR": "true",
+    "MODO_OSCURO": "false",
+    "FLASK_DEBUG": "false",
+    "LOG_MODE": "false",
+    "PORT": "5050",
+    "HOST": "127.0.0.1",
+    # Módulo de Sincronización BYOC (E2EE AES-256)
+    "SYNC_HABILITADO": "false",
+    "SYNC_CARPETA": "",
+    "SYNC_MODO_CIFRADO": "auto",
+    "SYNC_CLAVE": lambda: secrets.token_hex(32),
+    "SYNC_AUTO_APLICAR": "true",
+    "SYNC_NOMBRE_DISPOSITIVO": lambda: socket.gethostname(),
+    "SYNC_ULTIMA_REVISION": "0",
+}
+
+
+def serializar_valor_env(valor):
+    """Sanitiza y serializa un valor para su almacenamiento seguro dentro de .env."""
+    v_str = str(valor).replace("\r", "").replace("\n", "")
+    v_str = v_str.replace("\\", "\\\\").replace("'", r"\'")
+    return f"'{v_str}'"
+
+
+def escribir_env_seguro(ruta_env, mapa_valores):
+    """Escribe los ajustes en disco con reintentos para mitigar bloqueos transitorios."""
+    for _ in range(4):
+        try:
+            with open(ruta_env, "w", encoding="utf-8") as f:
+                for k, v in mapa_valores.items():
+                    f.write(f"{k}={serializar_valor_env(v)}\n")
+            return True
+        except (PermissionError, OSError):
+            time.sleep(0.15)
+    return False
+
+
+def sanitizar_y_reparar_env(ruta_env):
+    """
+    Inspección binaria tolerante y autorreparación del archivo .env:
+    - Lee en bytes ('rb') para que caracteres inválidos o bytes nulos (\x00, \xff) no crasheen Python.
+    - Aísla configuraciones dañadas a .env.corrupt_<timestamp>.
+    - Preserva y calcula 'ya_inicializado' respetando la existencia de marcadores.db.
+    """
+    valores = {}
+    archivo_danado = False
+    env_existia = os.path.exists(ruta_env)
+    db_activa = os.path.exists(DB_PATH) and os.path.getsize(DB_PATH) > 0
+
+    if env_existia:
+        try:
+            with open(ruta_env, "rb") as f:
+                contenido_bytes = f.read()
+
+            if b"\x00" in contenido_bytes:
+                archivo_danado = True
+            else:
+                try:
+                    contenido_bytes.decode("utf-8")
+                    valores = dict(dotenv_values(ruta_env))
+                except Exception:
+                    archivo_danado = True
+        except Exception:
+            archivo_danado = True
+
+    quarantine_nombre = None
+    if archivo_danado:
+        quarantine_nombre = f".env.corrupt_{int(time.time())}"
+        try:
+            os.rename(ruta_env, os.path.join(DIRECTORIO_RAIZ, quarantine_nombre))
+        except Exception:
+            try:
+                os.remove(ruta_env)
+            except Exception:
+                pass
+        valores = {}
+
+    flag_env = str(valores.get("SISTEMA_INICIALIZADO", "")).strip("'\"").lower() == "true"
+    ya_inicializado = flag_env or db_activa
+
+    hubo_cambios = archivo_danado or (not env_existia)
+    faltantes = []
+    advertencias = []
+
+    # Conciliación de consistencia
+    val_init = valores.get("SISTEMA_INICIALIZADO")
+    if val_init is not None and str(val_init).strip("'\"").lower() == "false" and db_activa:
+        advertencias.append("Inconsistencia: marcadores.db activo pero SISTEMA_INICIALIZADO='false'. Corrigiendo a 'true'...")
+        valores["SISTEMA_INICIALIZADO"] = "true"
+        hubo_cambios = True
+
+    for clave, valor_default in VALORES_PREDETERMINADOS.items():
+        val = valores.get(clave)
+
+        if clave == "SISTEMA_INICIALIZADO":
+            if val is None or not str(val).strip():
+                valores[clave] = "true" if ya_inicializado else "false"
+                faltantes.append(clave)
+                hubo_cambios = True
+            continue
+
+        if clave == "SYNC_CARPETA":
+            if val is None:
+                valores[clave] = ""
+                faltantes.append(clave)
+                hubo_cambios = True
+            continue
+
+        if val is None or not str(val).strip():
+            nuevo_val = valor_default() if callable(valor_default) else valor_default
+            valores[clave] = nuevo_val
+            faltantes.append(clave)
+            hubo_cambios = True
+
+    puerto_raw = valores.get("PORT", "5050")
+    try:
+        puerto_num = int(str(puerto_raw).strip("'\""))
+        if not (1 <= puerto_num <= 65535):
+            raise ValueError
+        valores["PORT"] = str(puerto_num)
+    except Exception:
+        advertencias.append(f"Puerto inválido detectado ({puerto_raw}). Restableciendo a 5050...")
+        valores["PORT"] = "5050"
+        hubo_cambios = True
+
+    host_raw = str(valores.get("HOST", "127.0.0.1")).strip("'\"")
+    if host_raw not in ["127.0.0.1", "0.0.0.0"]:
+        advertencias.append(f"Host no estándar ({host_raw}). Normalizando enlace a 127.0.0.1...")
+        valores["HOST"] = "127.0.0.1"
+        hubo_cambios = True
+
+    if hubo_cambios:
+        escribir_env_seguro(ruta_env, valores)
+
+    for k, v in valores.items():
+        os.environ[k] = str(v)
+
+    return faltantes, ya_inicializado, env_existia, archivo_danado, advertencias, quarantine_nombre
+
+
+# ==============================================================================
+# SECCIÓN 3: PRE-BOOT Y CARGA DE FLASK (INMUNE A FALLAS BINARIAS)
+# ==============================================================================
+# 1. Sanitizar .env ANTES de que cualquier módulo intente leerlo
+faltantes_env, ya_inicializado_sistema, env_existia_prev, env_danado_prev, advertencias_env, quarantine_generado = sanitizar_y_reparar_env(ENV_PATH)
+load_dotenv(ENV_PATH)
+
+# Módulos dependientes de configuración
 import database
 import sync_manager
 from routes import marcadores_bp, RUTA_ULTIMO_BACKUP
 from version import VERSION
 
-# Detección defensiva de RUTA_ULTIMO_SYNC y logger opcional
 try:
     from routes import RUTA_ULTIMO_SYNC
 except ImportError:
@@ -54,52 +225,19 @@ try:
 except ImportError:
     TIENE_LOGGER_HTTP = False
 
-# ------------------------------------------------------------------------------
-# RESOLUCIÓN DINÁMICA DE ENTORNO (EXE vs SCRIPT)
-# sys.frozen es inyectado por PyInstaller al ejecutar como binario congelado.
-# ------------------------------------------------------------------------------
-ES_EXE = getattr(sys, "frozen", False)
-if ES_EXE:
-    DIRECTORIO_RAIZ = os.path.dirname(sys.executable)
-    BUNDLE_DIR = getattr(sys, "_MEIPASS", DIRECTORIO_RAIZ)
-else:
-    DIRECTORIO_RAIZ = os.path.dirname(os.path.abspath(__file__))
-    BUNDLE_DIR = DIRECTORIO_RAIZ
-
-# Fijar el directorio de trabajo activo para evitar fallos por rutas relativas
-os.chdir(DIRECTORIO_RAIZ)
-
-# Rutas locales persistentes en disco
-ENV_PATH = os.path.join(DIRECTORIO_RAIZ, ".env")
-DB_PATH = os.path.join(DIRECTORIO_RAIZ, "marcadores.db")
-BACKUPS_DIR = os.path.join(DIRECTORIO_RAIZ, "backups")
-
-
-# ==============================================================================
-# SECCIÓN 2: INICIALIZACIÓN DE FLASK Y POLÍTICAS DE SEGURIDAD
-# ==============================================================================
-load_dotenv(ENV_PATH)
-
 app = Flask(
     __name__,
     template_folder=os.path.join(BUNDLE_DIR, "templates"),
     static_folder=os.path.join(BUNDLE_DIR, "static")
 )
 
-# Llave de sesión persistente para evitar desincronización en subprocesos
 app.secret_key = os.environ.get("SECRET_KEY")
-
-# Registro del Blueprint central de marcadores
 app.register_blueprint(marcadores_bp)
 
-# Iniciar registrador HTTP en consola si el módulo existe
 if TIENE_LOGGER_HTTP:
     configurar_logger_http(app)
 
-# Límite global contra DoS: 100 MiB (amplitud para copias de seguridad masivas)
 app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024
-
-# Blindaje de identidad: cookies de sesión seguras
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_SECURE"] = False
@@ -107,7 +245,6 @@ app.config["SESSION_COOKIE_SECURE"] = False
 
 @app.errorhandler(413)
 def error_archivo_demasiado_grande(e):
-    """Intercepta cargas de archivos que superen el límite del servidor."""
     ip_origen = request.remote_addr
     print(f"\n\033[91m[PBM :: ALERTA DE SEGURIDAD]\033[0m Carga masiva interceptada (> 100 MB) desde IP: {ip_origen}")
     return jsonify({
@@ -117,7 +254,7 @@ def error_archivo_demasiado_grande(e):
 
 
 # ==============================================================================
-# SECCIÓN 3: MOTOR DE TELEMETRÍA (KLOG) Y UTILIDADES DE INTEGRIDAD
+# SECCIÓN 4: MOTOR DE TELEMETRÍA (KLOG) Y UTILIDADES DE INTEGRIDAD
 # ==============================================================================
 def klog(estado, mensaje, delay=0.07):
     """Emite líneas de telemetría de arranque estilo kernel con formateo ANSI."""
@@ -173,155 +310,14 @@ def resolver_ip_lan():
 
 
 # ==============================================================================
-# SECCIÓN 4: GESTOR DE RESILIENCIA Y AUTORREPARACIÓN DE ENTORNO (.ENV)
-# ==============================================================================
-VALORES_PREDETERMINADOS = {
-    "SISTEMA_INICIALIZADO": "true",
-    "SECRET_KEY": lambda: secrets.token_hex(32),
-    "MASTER_KEY": lambda: secrets.token_hex(32),
-    "APP_PASSWORD": "cambiame",
-    "CONTRASENA_MOSTRADA": "false",
-    "MOSTRAR_FAVICONS": "true",
-    "ABRIR_NUEVA_PESTANA": "true",
-    "AUTO_ABRIR_NAVEGADOR": "true",
-    "MODO_OSCURO": "false",
-    "FLASK_DEBUG": "false",
-    "LOG_MODE": "false",
-    "PORT": "5050",
-    "HOST": "127.0.0.1",
-    # Módulo de Sincronización BYOC (E2EE AES-256)
-    "SYNC_HABILITADO": "false",
-    "SYNC_CARPETA": "",
-    "SYNC_MODO_CIFRADO": "auto",  # 'auto', 'manual' o 'libre'
-    "SYNC_CLAVE": lambda: secrets.token_hex(32),
-    "SYNC_AUTO_APLICAR": "true",
-    "SYNC_NOMBRE_DISPOSITIVO": lambda: socket.gethostname(),
-    "SYNC_ULTIMA_REVISION": "0",
-}
-
-
-def serializar_valor_env(valor):
-    """Sanitiza y serializa un valor para su almacenamiento seguro dentro de .env."""
-    v_str = str(valor).replace("\r", "").replace("\n", "")
-    v_str = v_str.replace("\\", "\\\\").replace("'", r"\'")
-    return f"'{v_str}'"
-
-
-def escribir_env_seguro(ruta_env, mapa_valores):
-    """Escribe los ajustes en disco con reintentos para mitigar bloqueos transitorios del SO."""
-    for _ in range(4):
-        try:
-            with open(ruta_env, "w", encoding="utf-8") as f:
-                for k, v in mapa_valores.items():
-                    f.write(f"{k}={serializar_valor_env(v)}\n")
-            return True
-        except (PermissionError, OSError):
-            time.sleep(0.15)
-    return False
-
-
-def sanitizar_y_reparar_env(ruta_env):
-    """
-    Inspecciona y repara el archivo de variables .env:
-    - Aísla configuraciones dañadas por bytes nulos (sabotaje binario).
-    - Aprovisiona llaves faltantes respetando valores predeterminados.
-    - Sanea rangos numéricos de puertos y formatos de interfaces de red.
-    """
-    valores = {}
-    archivo_danado = False
-    env_existia = os.path.exists(ruta_env)
-    ya_inicializado = os.path.exists(DB_PATH)
-
-    if env_existia:
-        try:
-            with open(ruta_env, "r", encoding="utf-8") as f:
-                contenido_raw = f.read()
-                if "\x00" in contenido_raw:
-                    archivo_danado = True
-                else:
-                    valores = dict(dotenv_values(ruta_env))
-        except Exception:
-            archivo_danado = True
-
-    if archivo_danado:
-        klog("fail", "Archivo .env ilegible o corrupto (sabotaje de datos binarios).")
-        quarantine = f".env.corrupt_{int(time.time())}"
-        try:
-            os.rename(ruta_env, os.path.join(DIRECTORIO_RAIZ, quarantine))
-            klog("warn", f"Configuración dañada aislada como: {quarantine}")
-        except Exception:
-            try:
-                os.remove(ruta_env)
-            except Exception:
-                pass
-        valores = {}
-    else:
-        flag_env = str(valores.get("SISTEMA_INICIALIZADO", "")).strip("'\"").lower() == "true"
-        ya_inicializado = flag_env or ya_inicializado
-
-    hubo_cambios = archivo_danado or (not env_existia)
-    faltantes = []
-    advertencias = []
-
-    val_init = valores.get("SISTEMA_INICIALIZADO")
-    if val_init is not None and str(val_init).strip("'\"").lower() == "false" and os.path.exists(DB_PATH):
-        advertencias.append("Inconsistencia: marcadores.db activo pero SISTEMA_INICIALIZADO='false'. Corrigiendo a 'true'...")
-        valores["SISTEMA_INICIALIZADO"] = "true"
-        hubo_cambios = True
-
-    for clave, valor_default in VALORES_PREDETERMINADOS.items():
-        val = valores.get(clave)
-
-        if clave == "SYNC_CARPETA":
-            if val is None:
-                valores[clave] = ""
-                faltantes.append(clave)
-                hubo_cambios = True
-            continue
-
-        if val is None or not str(val).strip():
-            nuevo_val = valor_default() if callable(valor_default) else valor_default
-            valores[clave] = nuevo_val
-            faltantes.append(clave)
-            hubo_cambios = True
-
-    puerto_raw = valores.get("PORT", "5050")
-    try:
-        puerto_num = int(str(puerto_raw).strip("'\""))
-        if not (1 <= puerto_num <= 65535):
-            raise ValueError
-        valores["PORT"] = str(puerto_num)
-    except Exception:
-        advertencias.append(f"Puerto inválido detectado ({puerto_raw}). Restableciendo a 5050...")
-        valores["PORT"] = "5050"
-        hubo_cambios = True
-
-    host_raw = str(valores.get("HOST", "127.0.0.1")).strip("'\"")
-    if host_raw not in ["127.0.0.1", "0.0.0.0"]:
-        advertencias.append(f"Host no estándar ({host_raw}). Normalizando enlace a 127.0.0.1...")
-        valores["HOST"] = "127.0.0.1"
-        hubo_cambios = True
-
-    if hubo_cambios:
-        exito = escribir_env_seguro(ruta_env, valores)
-        if not exito:
-            klog("warn", "No se pudo actualizar .env en disco por bloqueo del SO. Usando valores en memoria.")
-
-    for k, v in valores.items():
-        os.environ[k] = str(v)
-
-    return faltantes, ya_inicializado, env_existia, archivo_danado, advertencias
-
-
-# ==============================================================================
-# SECCIÓN 5: AUDITORÍA AVANZADA DE INTEGRIDAD SQLITE
+# SECCIÓN 5: AUDITORÍA DE INTEGRIDAD SQLITE
 # ==============================================================================
 def auditar_integridad_db(db_path):
     """
     Audita exhaustivamente la base de datos de marcadores:
     - Retorna 'ausente' si no existe o mide 0 bytes.
     - Retorna 'bloqueada' si otro proceso retiene un bloqueo exclusivo en disco.
-    - Retorna 'corrupta' ante fallo estructural de páginas B-Tree.
+    - Retorna 'corrupta' ante fallo estructural de páginas B-Tree o cabecera inválida.
     - Retorna 'incompleta' si falta alguna de las tablas maestras ('carpetas', 'marcadores').
     - Retorna 'ok' junto con el conteo de registros si la estructura es sólida.
     """
@@ -377,9 +373,6 @@ def auditar_integridad_db(db_path):
                 pass
 
 
-# ==============================================================================
-# SECCIÓN 6: SANEAMIENTO DEL SISTEMA DE ARCHIVOS Y PURGA DE RESIDUOS
-# ==============================================================================
 def sanear_directorios_y_archivos():
     """Verifica directorios requeridos y purga archivos temporales residuales."""
     directorios = [
@@ -408,7 +401,7 @@ def sanear_directorios_y_archivos():
 
 
 # ==============================================================================
-# SECCIÓN 7: RUTINA DE ARRANQUE (BOOTLOADER), RED LAN Y SERVIDOR WSGI
+# SECCIÓN 6: RUTINA DE ARRANQUE (BOOTLOADER), RED LAN Y SERVIDOR WSGI
 # ==============================================================================
 if __name__ == "__main__":
     es_reloader = os.environ.get("WERKZEUG_RUN_MAIN") == "true"
@@ -419,29 +412,29 @@ if __name__ == "__main__":
         print("=" * 65)
         time.sleep(0.10)
 
-        # 1. Auditoría y aprovisionamiento de entorno .env
-        faltantes, ya_inicializado, env_existia, archivo_danado, advertencias = sanitizar_y_reparar_env(ENV_PATH)
-
-        if not env_existia:
+        # 1. Informe de telemetría del entorno .env
+        if not env_existia_prev:
             klog("warn", "Configuración .env no encontrada. Iniciando aprovisionamiento inicial...")
-            for clave in faltantes:
+            for clave in faltantes_env:
                 klog("init", f"Generando parámetro predeterminado: {clave}")
-            klog("ok", f"Archivo .env de fábrica creado con {len(faltantes)} variables.")
+            klog("ok", f"Archivo .env de fábrica creado con {len(faltantes_env)} variables.")
 
-        elif archivo_danado:
-            for clave in faltantes:
+        elif env_danado_prev:
+            klog("fail", "Archivo .env ilegible o corrupto (sabotaje de datos binarios detectado).")
+            klog("warn", f"Configuración dañada aislada como: {quarantine_generado}")
+            for clave in faltantes_env:
                 klog("init", f"Regenerando parámetro tras aislamiento: {clave}")
-            klog("ok", f"Archivo .env recuperado con {len(faltantes)} variables.")
+            klog("ok", f"Archivo .env recuperado con {len(faltantes_env)} variables.")
 
         else:
             klog("ok", "Archivo .env cargado desde almacenamiento local.")
-            for adv in advertencias:
+            for adv in advertencias_env:
                 klog("warn", adv)
 
-            for clave in faltantes:
+            for clave in faltantes_env:
                 klog("init", f"Restaurando parámetro faltante: {clave}")
 
-            if faltantes or advertencias:
+            if faltantes_env or advertencias_env:
                 klog("ok", "Archivo .env reparado con éxito.")
             else:
                 klog("ok", "Archivo .env verificado: integridad completa.")
@@ -466,7 +459,7 @@ if __name__ == "__main__":
             bits_sync = len(sync_clave_val.encode("utf-8")) * 8
             klog("info", f"SYNC_CLAVE opera con clave manual: {bits_sync} bits ({len(sync_clave_val)} car.).")
 
-        # Telemetría de preferencias visuales de marcadores
+        # Telemetría de preferencias visuales
         modo_oscuro = "Sí" if os.environ.get("MODO_OSCURO", "false").lower() == "true" else "No"
         favicons = "Sí" if os.environ.get("MOSTRAR_FAVICONS", "true").lower() == "true" else "No"
         nueva_pestana = "Sí" if os.environ.get("ABRIR_NUEVA_PESTANA", "true").lower() == "true" else "No"
@@ -561,7 +554,9 @@ if __name__ == "__main__":
                                 with open(os.path.join(DIRECTORIO_RAIZ, RUTA_ULTIMO_SYNC), "w", encoding="utf-8") as f:
                                     f.write(str(time.time()))
                                 set_key(ENV_PATH, "SYNC_ULTIMA_REVISION", str(rev_remota))
+                                set_key(ENV_PATH, "SISTEMA_INICIALIZADO", "true")
                                 os.environ["SYNC_ULTIMA_REVISION"] = str(rev_remota)
+                                os.environ["SISTEMA_INICIALIZADO"] = "true"
                             except Exception:
                                 pass
                             estado_db, n_carpetas, n_marcadores = auditar_integridad_db(DB_PATH)
@@ -607,11 +602,21 @@ if __name__ == "__main__":
                             else:
                                 klog("ok", f"Bóveda sincronizada al día con la nube (Revisión #{rev_local}).")
 
-        # 6. Inicialización y Autocuración de Esquema de Base de Datos
+        # 6. Inicialización, Rescate y Autocuración de Esquema de Base de Datos
         if estado_db == "ausente" and not recuperada_de_nube:
-            klog("info", "Generando base de datos marcadores.db limpia e indexada...")
-            database.inicializar_db()
-            klog("ok", "Base de datos SQLite creada.")
+            if ya_inicializado_sistema:
+                klog("fail", "Base de datos eliminada externamente (pérdida de datos detectada).")
+                klog("warn", "Regenerando estructura limpia de emergencia...")
+                database.inicializar_db()
+                klog("ok", "Nueva base de datos SQLite inicializada en estado limpio.")
+                klog("warn", "Restaura tus marcadores desde /configuracion si cuentas con una copia de seguridad.")
+            else:
+                klog("info", "Primer inicio detectado: Generando marcadores.db limpia e indexada...")
+                database.inicializar_db()
+                klog("ok", "Base de datos SQLite creada e indexada correctamente.")
+                set_key(ENV_PATH, "SISTEMA_INICIALIZADO", "true")
+                os.environ["SISTEMA_INICIALIZADO"] = "true"
+
             try:
                 with open(os.path.join(DIRECTORIO_RAIZ, RUTA_ULTIMO_SYNC), "w", encoding="utf-8") as f:
                     f.write(str(time.time() + 2.0))
@@ -716,13 +721,11 @@ if __name__ == "__main__":
         print(">>> PBM PrivateBookmarkManager OPERATIVO Y LISTO <<<")
         print("-" * 65 + "\n")
 
-    # Apertura diferida del navegador
     auto_abrir = os.environ.get("AUTO_ABRIR_NAVEGADOR", "true").strip().lower() == "true"
     if auto_abrir and (ES_EXE or not es_reloader):
         url_destino = f"http://127.0.0.1:{port}"
         threading.Timer(1.2, lambda: webbrowser.open(url_destino)).start()
 
-    # Ejecución del servidor HTTP
     app.run(
         host=host,
         port=port,

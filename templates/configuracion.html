@@ -98,30 +98,31 @@
 
     {% if valores.get('SYNC_HABILITADO', 'false')|lower == 'true' and valores.get('SYNC_CARPETA') %}
         <!-- Métricas del estado de la bóveda -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.2rem;">
-            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); padding: 0.9rem; border-radius: 8px;">
-                <div style="font-size: 0.8rem; color: #94a3b8; text-transform: uppercase;">🏷️ Revisión Local</div>
-                <div style="font-size: 1.1rem; font-weight: bold; margin-top: 4px;" id="syncRevLocalTexto">
-                    #{{ rev_local }} <small style="font-size: 0.8rem; font-weight: normal; opacity: 0.8;">({{ valores.get('SYNC_NOMBRE_DISPOSITIVO', 'Este equipo') }})</small>
+        <div class="sync-metricas-grid">
+            <div class="sync-metrica-card">
+                <div class="sync-metrica-head">🏷️ REVISIÓN LOCAL</div>
+                <div class="sync-metrica-valor" id="syncRevLocalTexto">
+                    #{{ rev_local }} <small>({{ valores.get('SYNC_NOMBRE_DISPOSITIVO', 'Este equipo') }})</small>
                 </div>
             </div>
 
-            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); padding: 0.9rem; border-radius: 8px;">
-                <div style="font-size: 0.8rem; color: #94a3b8; text-transform: uppercase;">☁️ Revisión en Nube</div>
-                <div style="font-size: 1.1rem; font-weight: bold; margin-top: 4px;" id="syncRevNubeTexto">
+            <div class="sync-metrica-card">
+                <div class="sync-metrica-head">☁️ REVISIÓN EN NUBE</div>
+                <div class="sync-metrica-valor" id="syncRevNubeTexto">
                     {% if estado_sync == 'meta_corrupto' %}
-                        <span style="color: #ff5252;">Metadatos dañados</span>
+                        <span style="color: #ef4444;">Metadatos dañados</span>
                     {% elif meta_remoto %}
-                        #{{ rev_remota }} <small style="font-size: 0.8rem; font-weight: normal; opacity: 0.8;">(De: {{ meta_remoto.get('ultimo_equipo', 'Desconocido') }})</small>
+                        #{{ rev_remota }} <small>(De: {{ meta_remoto.get('ultimo_equipo', 'Desconocido') }})</small>
                     {% else %}
                         Sin bóveda en la nube
                     {% endif %}
                 </div>
             </div>
 
-            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); padding: 0.9rem; border-radius: 8px;">
-                <div style="font-size: 0.8rem; color: #94a3b8; text-transform: uppercase;">📡 Estado del Vínculo</div>
-                <div style="font-size: 1rem; font-weight: bold; margin-top: 4px; display: flex; align-items: center; gap: 6px;">
+            <!-- Tarjeta: Estado del Vínculo centrado -->
+            <div class="sync-metrica-card sync-metrica-centro">
+                <div class="sync-metrica-head">📡 ESTADO DEL VÍNCULO</div>
+                <div class="sync-metrica-valor" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
                     <span id="syncEstadoIcono">
                         {% if estado_sync == 'al_dia' %}✅
                         {% elif estado_sync == 'pendiente_descarga' %}📥
@@ -507,7 +508,7 @@
 <div id="modalSyncHelp" class="modal-overlay" onclick="cerrarModalSync(event)" style="display: none;">
     <div class="modal-caja" onclick="event.stopPropagation()" style="max-width: 700px; text-align: left;">
         <div class="modal-header">
-            <h3 class="modal-titulo">☁️️ ¿Cómo funciona BYOC (Bring Your Own Cloud)?</h3>
+            <h3 class="modal-titulo">☁ ¿Cómo funciona BYOC (Bring Your Own Cloud)?</h3>
             <button type="button" class="btn-cerrar-modal" onclick="cerrarModalSync()">&times;</button>
         </div>
         
@@ -582,7 +583,7 @@
             </ul>
 
             <h4>🚑 Rescate Automático y Recuperación ante Desastres (Bootloader):</h4>
-            <div class="cloud-provider-card" style="border-left: 4px solid var(--acento);">
+            <div class="cloud-provider-card card-bootloader">
                 <strong style="color: var(--texto);">Recuperación de Emergencia Automática:</strong>
                 <p style="margin: 0.3rem 0 0.5rem 0;">
                     Si al iniciar el sistema el bootloader detecta que la base de datos local (<code>marcadores.db</code>) está comprometida (archivo borrado, corrupto o aislado en cuarentena), <strong>priorizará automáticamente restaurar la última copia íntegra disponible en la nube</strong>.
@@ -597,6 +598,32 @@
         <div class="modal-acciones">
             <button type="button" class="btn-primario" onclick="cerrarModalSync()">Entendido</button>
         </div>
+    </div>
+</div>
+
+<!-- ======================================================================= -->
+<!-- MODAL DE CONFIRMACIÓN: ROTACIÓN CRIPTOGRÁFICA DE CLAVE SYNC             -->
+<!-- ======================================================================= -->
+<div id="modalConfirmRotacion" class="modal-overlay" onclick="cerrarModalRotacion(event)" style="display: none;">
+    <div class="modal-caja modal-sm" onclick="event.stopPropagation()" style="max-width: 480px; text-align: left;">
+        <div class="modal-header">
+            <h3 class="modal-titulo">⚠️ Confirmar Rotación de Llave</h3>
+            <button type="button" class="btn-cerrar-modal" onclick="cerrarModalRotacion()">&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('marcadores.sync_rotar_clave') }}" style="margin: 0;">
+            <div class="modal-cuerpo" style="font-size: 0.9rem; line-height: 1.5;">
+                <p>Se generará una <strong>nueva clave aleatoria de 256 bits</strong> en el servidor.</p>
+                <ol style="padding-left: 1.2rem; margin: 0.5rem 0;">
+                    <li>La bóveda anterior en la nube se eliminará de forma segura.</li>
+                    <li>Se compilará un nuevo paquete re-cifrado con la nueva llave.</li>
+                    <li>Deberás copiar esta nueva clave en tus demás dispositivos para mantener la sincronización.</li>
+                </ol>
+            </div>
+            <div class="modal-acciones">
+                <button type="button" class="btn-secundario" onclick="cerrarModalRotacion()">Cancelar</button>
+                <button type="submit" class="btn-peligro">Generar Nueva Clave</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -732,7 +759,10 @@
         if (m) m.style.display = "none";
     }
     document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") { cerrarModalSync(); cerrarModalRotacion(); }
+        if (e.key === "Escape") { 
+            cerrarModalSync(); 
+            cerrarModalRotacion(); 
+        }
     });
 
     // 5. Selector nativo de carpetas
@@ -831,16 +861,6 @@
             btn.innerHTML = '✔ ¡Copiada!';
             setTimeout(() => { btn.innerHTML = orig; }, 2000);
         });
-    }
-
-    function ejecutarRotacionSegura() {
-        cerrarModalRotacion();
-        const arr = new Uint8Array(32);
-        crypto.getRandomValues(arr);
-        const hex = Array.from(arr, b => b.toString(16).padStart(2, '0')).join('');
-        inputClave.value = hex;
-        radioAuto.checked = true;
-        cambiarModoClave('auto');
     }
 
     // 7. Consulta asíncrona de estado de nube

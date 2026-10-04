@@ -14,7 +14,7 @@ Responsabilidades de arquitectura:
 8. Extracción asíncrona de títulos remotos vía web scraping (BeautifulSoup).
 9. Motor de importación y exportación dual (JSON nativo y HTML estándar Netscape).
 10. Sincronización BYOC multidispositivo con cifrado E2EE (AES-256) y hashes SHA-256.
-11. Diagnóstico de base de datos, métricas de almacenamiento y avisos de respaldo.
+11. Diagnóstico de base de datos y métricas de almacenamiento.
 ==============================================================================
 """
 
@@ -65,12 +65,7 @@ DURACION_DESBLOQUEO = 120  # 2 minutos
 
 RUTA_ENV = ".env"
 RUTA_ULTIMO_BACKUP = "ultimo_backup.txt"
-RUTA_SILENCIAR_BACKUP = "silenciar_backup.txt"
 RUTA_ULTIMO_SYNC = "ultimo_sync.txt"
-
-# Políticas de advertencia de respaldo (10 días para aviso, 24 horas para posponer)
-SEGUNDOS_AVISO_BACKUP = 10 * 24 * 60 * 60
-SEGUNDOS_SILENCIO_BACKUP = 1 * 24 * 60 * 60
 
 # Constantes del contenedor de sincronización BYOC
 VAULT_ZIP_NAME = "pbm_vault.zip"
@@ -115,7 +110,7 @@ def registrar_log(accion, tipo=None):
     elif tipo == "DELETE" or (tipo is None and any(k in accion_lower for k in ["elimin", "borrad", "vaciad", "purgad"])):
         badge = f"{CLR_BOLD}{CLR_MAGENTA}🗑 [PBM :: DELETE]{CLR_RESET}"
         texto_formateado = f"{CLR_MAGENTA}{accion}{CLR_RESET}"
-    elif tipo == "SYS" or (tipo is None and any(k in accion_lower for k in ["desbloque", "bloque", "sesión", "rotad", "crític", "backup", "pospuest", "sync"])):
+    elif tipo == "SYS" or (tipo is None and any(k in accion_lower for k in ["desbloque", "bloque", "sesión", "rotad", "crític", "backup", "sync"])):
         badge = f"{CLR_BOLD}{CLR_AMARILLO}⚡ [PBM :: SYS]{CLR_RESET}"
         texto_formateado = f"{CLR_AMARILLO}{accion}{CLR_RESET}"
     else:
@@ -129,10 +124,7 @@ def registrar_log(accion, tipo=None):
 # SECCIÓN 3: CONTROL DE ACCESO, SESIÓN Y SEGURIDAD PERIMETRAL
 # ==============================================================================
 def esta_desbloqueado():
-    """
-    Valida si la sesión actual cuenta con autorización administrativa vigente.
-    Verifica firma volátil de arranque de RAM y tiempo de vida útil (120s).
-    """
+    """Valida si la sesión actual cuenta con autorización administrativa vigente."""
     if not session.get("desbloqueo_critico"):
         return False
     if session.get("desbloqueo_servidor") != INICIO_SERVIDOR:
@@ -146,12 +138,7 @@ def esta_desbloqueado():
 
 @marcadores_bp.before_request
 def requerir_login():
-    """
-    Interceptor de seguridad perimetral:
-    - Permite libre acceso únicamente a la pantalla de login y recursos estáticos.
-    - Intercepta llamadas mutantes (POST/PUT/DELETE) no autorizadas emitiendo alertas con IP.
-    - Devuelve JSON 401 en peticiones asíncronas para evitar redirecciones corruptas.
-    """
+    """Interceptor de seguridad perimetral."""
     if request.endpoint in ["marcadores.login", "static"]:
         return
 
@@ -179,7 +166,7 @@ def formatear_tamano(bytes_cant):
 
 
 def calcular_sha256_archivo(ruta):
-    """Calcula el hash SHA-256 de un archivo en disco de forma segura mediante streaming en bloques."""
+    """Calcula el hash SHA-256 de un archivo en disco de forma segura."""
     if not os.path.exists(ruta):
         return None
     try:
@@ -260,49 +247,21 @@ def seleccionar_carpeta_nativa():
 
 
 # ==============================================================================
-# SECCIÓN 5: PROCESADOR DE CONTEXTO GLOBAL (JINJA2 TEMPLATES)
+# SECCIÓN 5: PROCESADOR DE CONTEXTO GLOBAL (DETECCIÓN INTELIGENTE DE SYNC)
 # ==============================================================================
 @marcadores_bp.app_context_processor
 def inyectar_avisos():
     """
     Inyecta parámetros globales de estado, preferencias del .env y telemetría
-    de respaldos y sincronización en todas las vistas HTML.
+    de sincronización en todas las vistas HTML sin carteles residuales.
     """
     desbloqueado = esta_desbloqueado()
     segundos_restantes = max(0, int(session.get("desbloqueo_expira", 0) - time.time())) if desbloqueado else 0
 
-    fecha_ultimo = None
-    if os.path.exists(RUTA_ULTIMO_BACKUP):
-        try:
-            with open(RUTA_ULTIMO_BACKUP, "r", encoding="utf-8") as f:
-                fecha_ultimo = float(f.read().strip())
-        except (ValueError, OSError):
-            pass
-
-    silenciado_hasta = 0
-    if os.path.exists(RUTA_SILENCIAR_BACKUP):
-        try:
-            with open(RUTA_SILENCIAR_BACKUP, "r", encoding="utf-8") as f:
-                silenciado_hasta = float(f.read().strip())
-        except (ValueError, OSError):
-            pass
-
-    recordar_backup = False
-    dias_sin_backup = 0
-    ahora = time.time()
-
-    if fecha_ultimo:
-        segundos_pasados = ahora - fecha_ultimo
-        dias_sin_backup = int(segundos_pasados // 86400)
-        if segundos_pasados >= SEGUNDOS_AVISO_BACKUP and ahora > silenciado_hasta:
-            recordar_backup = True
-    elif ahora > silenciado_hasta:
-        recordar_backup = True
-
-    # Comprobación de estado de sincronización BYOC
     sync_hab = os.environ.get("SYNC_HABILITADO", "false").strip().lower() == "true"
     sync_carp = os.environ.get("SYNC_CARPETA", "").strip()
     cambios_pendientes_sync = False
+    motivo_sync = ""
 
     if sync_hab and sync_carp and os.path.isdir(sync_carp):
         ultimo_sync_ts = 0.0
@@ -313,38 +272,45 @@ def inyectar_avisos():
             except Exception:
                 ultimo_sync_ts = 0.0
 
+        # 1. ¿Modificaciones locales en marcadores.db posteriores al último sync?
         db_path = getattr(database, "DB_PATH", "marcadores.db")
         if os.path.exists(db_path):
             db_mtime = os.path.getmtime(db_path)
             if db_mtime > (ultimo_sync_ts + 1.5):
                 cambios_pendientes_sync = True
+                motivo_sync = "local_modificado"
+
+        # 2. ¿Revisión remota en la nube superior a la local?
+        try:
+            meta_remoto = sync_manager.leer_metadatos_remotos(sync_carp)
+            if meta_remoto:
+                rev_remota = int(meta_remoto.get("revision", 0))
+                rev_local = int(os.environ.get("SYNC_ULTIMA_REVISION", "0").strip())
+                if rev_remota > rev_local:
+                    cambios_pendientes_sync = True
+                    motivo_sync = "nube_nueva"
+        except Exception:
+            pass
 
     return {
         "app_version": VERSION,
-        "contraseña_por_defecto": os.environ.get("APP_PASSWORD") == "cambiame",
-        "contrasena_por_defecto": os.environ.get("APP_PASSWORD") == "cambiame",
         "mostrar_favicons": os.environ.get("MOSTRAR_FAVICONS", "true").strip().lower() == "true",
         "desbloqueo_critico_activo": desbloqueado,
         "desbloqueo_segundos_restantes": segundos_restantes,
-        "recordar_backup": recordar_backup,
-        "dias_sin_backup": dias_sin_backup,
         "abrir_nueva_pestana": os.environ.get("ABRIR_NUEVA_PESTANA", "true").strip().lower() == "true",
         "modo_oscuro": os.environ.get("MODO_OSCURO", "false").strip().lower() == "true",
         "sync_hab": sync_hab,
         "sync_carpeta": sync_carp,
-        "sync_pendiente": cambios_pendientes_sync
+        "sync_pendiente": cambios_pendientes_sync,
+        "sync_motivo": motivo_sync
     }
 
 
 # ==============================================================================
-# SECCIÓN 6: AUTENTICACIÓN, LOGIN Y CONTROL DE ACCESO
+# SECCIÓN 6: AUTENTICACIÓN Y SESIONES
 # ==============================================================================
 @marcadores_bp.route("/login", methods=["GET", "POST"])
 def login():
-    """
-    Gestiona el acceso web admitiendo tanto APP_PASSWORD como MASTER_KEY de rescate.
-    Monitorea intentos fallidos para proveer guías de recuperación tras 3 desatinos.
-    """
     if session.get("autenticado"):
         return redirect(url_for("marcadores.home"))
 
@@ -372,9 +338,6 @@ def login():
         intentos = session["intentos_fallidos"]
         registrar_log(f"Credencial incorrecta desde {request.remote_addr} (intento #{intentos})", "ERROR")
 
-        if intentos == 3:
-            registrar_log(f"Umbral de seguridad alcanzado desde {request.remote_addr}: ayuda en pantalla mostrada", "SYS")
-
         return render_template(
             "login.html",
             error="Contraseña incorrecta",
@@ -396,20 +359,15 @@ def login():
 
 @marcadores_bp.route("/logout")
 def logout():
-    """Limpia el almacén de sesión y revoca el acceso del navegador actual."""
     session.clear()
     registrar_log("Cierre de sesión manual ejecutado", "SYS")
     return redirect(url_for("marcadores.login"))
 
 
 # ==============================================================================
-# SECCIÓN 7: NAVEGACIÓN Y VISTAS DE DIRECTORIOS (CATÁLOGO DE MARCADORES)
+# SECCIÓN 7: VISTAS Y NAVEGACIÓN DE DIRECTORIOS
 # ==============================================================================
 def ver_carpeta(carpeta_id):
-    """
-    Controlador interno: obtiene las carpetas anidadas, la posición actual del árbol
-    y la lista de marcadores contenidos para renderizar la interfaz principal.
-    """
     carpeta_actual = database.obtener_carpeta(carpeta_id)
     subcarpetas = database.obtener_subcarpetas(carpeta_id)
     marcadores = database.obtener_marcadores(carpeta_id)
@@ -429,24 +387,18 @@ def ver_carpeta(carpeta_id):
 
 @marcadores_bp.route("/")
 def home():
-    """Punto de entrada principal: muestra la raíz del catálogo de marcadores."""
     return ver_carpeta(None)
 
 
 @marcadores_bp.route("/carpeta/<int:carpeta_id>")
 def ver_carpeta_ruta(carpeta_id):
-    """Navega a un directorio específico de la jerarquía de marcadores."""
     return ver_carpeta(carpeta_id)
 
 
 # ==============================================================================
-# SECCIÓN 8: GESTIÓN DE MARCADORES (CRUD, REUBICACIÓN Y AVANCE DE LECTURA)
+# SECCIÓN 8: GESTIÓN DE MARCADORES (CRUD & PROGRESO)
 # ==============================================================================
 def obtener_titulo_desde_url(url):
-    """
-    Realiza una solicitud HTTP ligera a la URL indicada con User-Agent de navegador
-    para extraer y retornar el texto de la etiqueta <title>.
-    """
     try:
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
         respuesta = requests.get(url, timeout=5, headers=headers)
@@ -461,7 +413,6 @@ def obtener_titulo_desde_url(url):
 
 @marcadores_bp.route("/agregar", methods=["POST"])
 def agregar():
-    """Registra un nuevo marcador con soporte de autocompletado y progreso inicial."""
     carpeta_id = request.form.get("carpeta_id") or None
     url = request.form.get("url", "").strip()
     titulo = request.form.get("titulo", "").strip()
@@ -484,7 +435,6 @@ def agregar():
 
 @marcadores_bp.route("/editar/<int:id_marcador>", methods=["GET", "POST"])
 def editar(id_marcador):
-    """Actualiza la información, carpeta contenedora, notas y progreso de un marcador."""
     if request.method == "POST":
         nueva_carpeta_id = request.form.get("carpeta_id") or None
         nota = request.form.get("nota", "").strip() or None
@@ -508,14 +458,12 @@ def editar(id_marcador):
         registrar_log(f"Intento de editar marcador inexistente [ID: {id_marcador}]", "ERROR")
         return redirect(url_for("marcadores.home"))
 
-    registrar_log(f"Formulario de edición abierto para marcador: '{marcador['titulo']}'", "INFO")
     todas_las_carpetas = database.obtener_todas_las_carpetas()
     return render_template("editar.html", marcador=marcador, todas_las_carpetas=todas_las_carpetas)
 
 
 @marcadores_bp.route("/mover/<int:id_marcador>", methods=["POST"])
 def mover(id_marcador):
-    """Reubica rápidamente un marcador en otra carpeta o en el directorio raíz."""
     nueva_carpeta_id = request.form.get("nueva_carpeta_id") or None
     database.mover_marcador(id_marcador, nueva_carpeta_id)
     registrar_log(f"Marcador [ID: {id_marcador}] movido a carpeta {nueva_carpeta_id or 'Raíz'}", "SUCCESS")
@@ -524,7 +472,6 @@ def mover(id_marcador):
 
 @marcadores_bp.route("/eliminar/<int:id_marcador>", methods=["GET", "POST", "DELETE"])
 def eliminar(id_marcador):
-    """Elimina permanentemente un marcador específico de la base de datos."""
     marcador = database.obtener_marcador(id_marcador)
     nombre = marcador["titulo"] if marcador else f"ID #{id_marcador}"
     database.eliminar_marcador(id_marcador)
@@ -534,7 +481,6 @@ def eliminar(id_marcador):
 
 @marcadores_bp.route("/progreso/<int:id_marcador>/<accion>", methods=["POST"])
 def progreso(id_marcador, accion):
-    """Ajusta en tiempo real el contador de progreso numérico (capítulo, lección, avance)."""
     if accion == "sumar":
         delta = 1
     elif accion == "restar":
@@ -543,28 +489,25 @@ def progreso(id_marcador, accion):
         return redirect(request.referrer or url_for("marcadores.home"))
 
     database.actualizar_progreso(id_marcador, delta)
-    registrar_log(f"Progreso de lectura ajustado ({accion}) para marcador [ID: {id_marcador}]", "SUCCESS")
+    registrar_log(f"Progreso ajustado ({accion}) para marcador [ID: {id_marcador}]", "SUCCESS")
     return redirect(request.referrer or url_for("marcadores.home"))
 
 
 # ==============================================================================
-# SECCIÓN 9: GESTIÓN DE CARPETAS (CRUD, TRASLADO Y ELIMINACIÓN MODAL)
+# SECCIÓN 9: GESTIÓN DE CARPETAS (CRUD & MODAL)
 # ==============================================================================
 @marcadores_bp.route("/crear_carpeta", methods=["POST"])
 def crear_carpeta():
-    """Crea una nueva carpeta en la raíz o como subdirectorio de otra existente."""
     carpeta_padre_id = request.form.get("carpeta_padre_id") or None
     nombre = request.form.get("nombre", "").strip() or "Nueva Carpeta"
 
     database.crear_carpeta(nombre, carpeta_padre_id)
-    padre_info = f" (dentro de ID #{carpeta_padre_id})" if carpeta_padre_id else " (en Raíz)"
-    registrar_log(f"Carpeta creada con éxito: '{nombre}'{padre_info}", "SUCCESS")
+    registrar_log(f"Carpeta creada con éxito: '{nombre}'", "SUCCESS")
     return redirect(request.referrer or url_for("marcadores.home"))
 
 
 @marcadores_bp.route("/editar_carpeta/<int:carpeta_id>", methods=["GET", "POST"])
 def editar_carpeta(carpeta_id):
-    """Renombra una carpeta y permite trasladar su ubicación jerárquica en el árbol."""
     if request.method == "POST":
         nombre_nuevo = request.form.get("nombre", "").strip() or "Carpeta sin nombre"
         nueva_padre = request.form.get("carpeta_padre_id")
@@ -578,7 +521,7 @@ def editar_carpeta(carpeta_id):
                 nueva_padre_id = None
 
         database.editar_carpeta(carpeta_id, nombre_nuevo, nueva_padre_id)
-        registrar_log(f"Carpeta actualizada [ID: {carpeta_id}]: renombrada a '{nombre_nuevo}'", "SUCCESS")
+        registrar_log(f"Carpeta actualizada [ID: {carpeta_id}]: '{nombre_nuevo}'", "SUCCESS")
 
         carpeta = database.obtener_carpeta(carpeta_id)
         if carpeta and carpeta["carpeta_padre_id"]:
@@ -587,29 +530,20 @@ def editar_carpeta(carpeta_id):
 
     carpeta = database.obtener_carpeta(carpeta_id)
     if not carpeta:
-        registrar_log(f"Intento de editar carpeta inexistente [ID: {carpeta_id}]", "ERROR")
         return redirect(url_for("marcadores.home"))
 
-    registrar_log(f"Formulario de edición abierto para carpeta: '{carpeta['nombre']}'", "INFO")
     todas_las_carpetas = database.obtener_todas_las_carpetas()
     return render_template("editar_carpeta.html", carpeta=carpeta, todas_las_carpetas=todas_las_carpetas)
 
 
 @marcadores_bp.route("/carpeta/<int:carpeta_id>/conteo")
 def conteo_carpeta(carpeta_id):
-    """Retorna la cantidad de marcadores que alberga una carpeta para alimentar el modal interactivo."""
     total = database.contar_contenido_carpeta(carpeta_id)
     return jsonify({"ok": True, "carpeta_id": carpeta_id, "total": total})
 
 
 @marcadores_bp.route("/eliminar_carpeta/<int:carpeta_id>", methods=["GET", "POST"])
 def eliminar_carpeta(carpeta_id):
-    """
-    Elimina una carpeta específica:
-    - Admite POST desde la ventana modal con la opción 'borrar_contenido'.
-    - Si 'borrar_contenido' está activo ('on', 'true', '1'), elimina los marcadores internos.
-    - Si no está activo, preserva los marcadores reubicándolos en la raíz (carpeta_id = NULL).
-    """
     borrar_contenido = False
     if request.method == "POST":
         borrar_contenido = request.form.get("borrar_contenido") in ["true", "1", "on"]
@@ -626,14 +560,10 @@ def eliminar_carpeta(carpeta_id):
 
 
 # ==============================================================================
-# SECCIÓN 10: OPERACIONES EN LOTE (BATCH MOVE & DELETE)
+# SECCIÓN 10: ACCIONES EN LOTE (BATCH MOVE & DELETE)
 # ==============================================================================
 @marcadores_bp.route("/mover_masivo", methods=["POST"])
 def mover_masivo():
-    """
-    Reubica marcadores y/o carpetas seleccionadas hacia una carpeta destino o a la raíz.
-    Soporta peticiones de formularios multipart/form-data y llamadas asíncronas JSON.
-    """
     nueva_carpeta_id = request.form.get("nueva_carpeta_id")
     if nueva_carpeta_id in ["", "null", "raiz", "0"]:
         nueva_carpeta_id = None
@@ -655,7 +585,6 @@ def mover_masivo():
             nueva_carpeta_id = int(raw_id) if raw_id and str(raw_id).isdigit() else None
 
     if not ids_marcadores and not ids_carpetas:
-        registrar_log("Intento de movimiento en lote sin elementos seleccionados", "WARN")
         if request.is_json:
             return jsonify({"ok": False, "error": "No se seleccionaron elementos."}), 400
         return redirect(request.referrer or url_for("marcadores.home"))
@@ -684,11 +613,9 @@ def mover_masivo():
 
 @marcadores_bp.route("/eliminar_masivo", methods=["POST"])
 def eliminar_masivo():
-    """Elimina en lote los marcadores seleccionados permanentemente."""
     ids_marcadores = request.form.getlist("ids_marcadores")
 
     if not ids_marcadores:
-        registrar_log("Intento de borrado masivo sin marcadores seleccionados", "WARN")
         return redirect(request.referrer or url_for("marcadores.home"))
 
     total_eliminados = database.eliminar_marcadores_lote(ids_marcadores)
@@ -698,21 +625,19 @@ def eliminar_masivo():
 
 
 # ==============================================================================
-# SECCIÓN 11: BÚSQUEDA Y VISTAS CONSOLIDADAS
+# SECCIÓN 11: BÚSQUEDA Y VISTA GLOBAL
 # ==============================================================================
 @marcadores_bp.route("/buscar")
 def buscar():
-    """Filtra y devuelve marcadores coincidentes por texto en títulos, URLs o notas."""
     texto = request.args.get("q", "").strip()
     resultados = database.buscar_marcadores(texto) if texto else []
     if texto:
-        registrar_log(f"Búsqueda ejecutada: '{texto}' ({len(resultados)} coincidencias encontradas)", "INFO")
+        registrar_log(f"Búsqueda ejecutada: '{texto}' ({len(resultados)} coincidencias)", "INFO")
     return render_template("buscar.html", texto=texto, resultados=resultados)
 
 
 @marcadores_bp.route("/todos")
 def todos():
-    """Genera la vista consolidada de todos los marcadores agrupados por carpeta."""
     marcadores = database.obtener_todos_los_marcadores()
     todas_las_carpetas = database.obtener_todas_las_carpetas()
 
@@ -721,16 +646,14 @@ def todos():
         nombre_grupo = m["carpeta_nombre"] if m["carpeta_nombre"] else "Sin carpeta"
         agrupados.setdefault(nombre_grupo, []).append(m)
 
-    registrar_log(f"Vista general consultada ({len(marcadores)} marcadores en {len(agrupados)} categorías)", "INFO")
     return render_template("todos.html", agrupados=agrupados, todas_las_carpetas=todas_las_carpetas)
 
 
 # ==============================================================================
-# SECCIÓN 12: MOTOR DE RESPALDOS MANUALES (JSON Y HTML NETSCAPE)
+# SECCIÓN 12: EXPORTACIÓN E IMPORTACIÓN MANUAL
 # ==============================================================================
 @marcadores_bp.route("/exportar")
 def exportar():
-    """Exporta toda la base de datos relacional en formato estructurado JSON nativo."""
     carpetas = database.obtener_todas_las_carpetas()
     marcadores = database.obtener_todos_los_marcadores()
 
@@ -746,11 +669,6 @@ def exportar():
 
     with open(RUTA_ULTIMO_BACKUP, "w", encoding="utf-8") as f:
         f.write(str(time.time()))
-    if os.path.exists(RUTA_SILENCIAR_BACKUP):
-        try:
-            os.remove(RUTA_SILENCIAR_BACKUP)
-        except OSError:
-            pass
 
     contenido = json.dumps(datos, indent=2, ensure_ascii=False)
     registrar_log(f"Exportación JSON completada ({len(carpetas)} carpetas, {len(marcadores)} marcadores)", "SUCCESS")
@@ -763,18 +681,14 @@ def exportar():
 
 @marcadores_bp.route("/importar", methods=["POST"])
 def importar():
-    """Restaura o fusiona carpetas y enlaces desde un archivo JSON nativo."""
     if "archivo" not in request.files:
-        registrar_log("Intento de importación sin campo de archivo", "ERROR")
         return redirect(url_for("marcadores.home"))
 
     archivo = request.files["archivo"]
     if not archivo or archivo.filename == "":
-        registrar_log("Intento de importación con archivo vacío", "ERROR")
         return redirect(url_for("marcadores.home"))
 
     if not archivo.filename.lower().endswith(".json"):
-        registrar_log(f"Extensión rechazada en importación JSON: '{archivo.filename}'", "ERROR")
         return redirect(url_for("marcadores.home"))
 
     try:
@@ -782,22 +696,21 @@ def importar():
         carpetas = datos.get("carpetas", [])
         marcadores = datos.get("marcadores", [])
         database.importar_datos(carpetas, marcadores)
-        registrar_log(f"Importación JSON completada ({len(carpetas)} carpetas, {len(marcadores)} marcadores incorporados)", "SUCCESS")
+        registrar_log(f"Importación JSON completada ({len(carpetas)} carpetas, {len(marcadores)} marcadores)", "SUCCESS")
     except Exception as e:
-        registrar_log(f"Error procesando archivo JSON de respaldo: {e}", "ERROR")
+        registrar_log(f"Error procesando archivo JSON: {e}", "ERROR")
 
     return redirect(url_for("marcadores.home"))
 
 
 @marcadores_bp.route("/exportar_html")
 def exportar_html_ruta():
-    """Genera archivo HTML estándar (formato Netscape) compatible con Chrome, Firefox y Brave."""
     carpetas = database.obtener_todas_las_carpetas()
     marcadores = database.obtener_todos_los_marcadores()
     contenido = bookmarks_html.exportar_html(
         [dict(c) for c in carpetas], [dict(m) for m in marcadores]
     )
-    registrar_log(f"Exportación HTML Netscape completada ({len(marcadores)} enlaces exportados)", "SUCCESS")
+    registrar_log(f"Exportación HTML Netscape completada ({len(marcadores)} enlaces)", "SUCCESS")
     return Response(
         contenido,
         mimetype="text/html",
@@ -807,46 +720,39 @@ def exportar_html_ruta():
 
 @marcadores_bp.route("/importar_html", methods=["POST"])
 def importar_html_ruta():
-    """Parsea e importa marcadores desde archivos HTML exportados por navegadores comerciales."""
     if "archivo" not in request.files:
-        registrar_log("Intento de importación HTML sin campo de archivo", "ERROR")
         return redirect(url_for("marcadores.home"))
 
     archivo = request.files["archivo"]
     if not archivo or archivo.filename == "":
-        registrar_log("Intento de importación HTML con archivo vacío", "ERROR")
         return redirect(url_for("marcadores.home"))
 
     if not (archivo.filename.lower().endswith(".html") or archivo.filename.lower().endswith(".htm")):
-        registrar_log(f"Extensión rechazada en importación HTML: '{archivo.filename}'", "ERROR")
         return redirect(url_for("marcadores.home"))
 
     try:
         contenido = archivo.read().decode("utf-8", errors="ignore")
         carpetas_data, marcadores_data = bookmarks_html.importar_html(contenido)
         database.importar_datos(carpetas_data, marcadores_data)
-        registrar_log(f"Importación HTML completada ({len(carpetas_data)} carpetas y {len(marcadores_data)} marcadores)", "SUCCESS")
+        registrar_log(f"Importación HTML completada ({len(carpetas_data)} carpetas, {len(marcadores_data)} marcadores)", "SUCCESS")
     except Exception as e:
-        registrar_log(f"Error procesando archivo HTML de navegadores: {e}", "ERROR")
+        registrar_log(f"Error procesando archivo HTML: {e}", "ERROR")
 
     return redirect(url_for("marcadores.home"))
 
 
 # ==============================================================================
-# SECCIÓN 13: CONFIGURACIÓN, DESBLOQUEO CRÍTICO Y AJUSTES .ENV
+# SECCIÓN 13: CONFIGURACIÓN, DESBLOQUEO CRÍTICO Y ROTACIÓN DE CLAVE
 # ==============================================================================
 @marcadores_bp.route("/configuracion", methods=["GET", "POST"])
 def configuracion():
-    """Panel administrativo para preferencias visuales, puertos de red, credenciales y sync."""
     desbloqueado = esta_desbloqueado()
     segundos_restantes = max(0, int(session.get("desbloqueo_expira", 0) - time.time())) if desbloqueado else 0
 
     if request.method == "POST":
         hubo_cambios = False
 
-        # 1. Parámetros de seguridad protegidos por MASTER_KEY
         if desbloqueado:
-            # Contraseña de acceso
             pass_anterior = os.environ.get("APP_PASSWORD", "cambiame").strip()
             nueva_password = request.form.get("password", "").strip() or request.form.get("app_password", "").strip()
             if nueva_password and nueva_password != pass_anterior:
@@ -855,14 +761,12 @@ def configuracion():
                 hubo_cambios = True
                 registrar_log("Contraseña de acceso APP_PASSWORD actualizada", "SYS")
 
-            # Host y Puerto
             host_anterior = os.environ.get("HOST", "127.0.0.1").strip()
             nuevo_host = request.form.get("host", "").strip()
             if nuevo_host in ["127.0.0.1", "0.0.0.0"] and nuevo_host != host_anterior:
                 set_key(RUTA_ENV, "HOST", nuevo_host)
                 os.environ["HOST"] = nuevo_host
                 hubo_cambios = True
-                registrar_log(f"Interfaz HOST modificada a: {nuevo_host}", "SYS")
 
             port_anterior = os.environ.get("PORT", "5050").strip()
             nuevo_puerto = request.form.get("port", "").strip()
@@ -873,7 +777,6 @@ def configuracion():
                         set_key(RUTA_ENV, "PORT", str(p_num))
                         os.environ["PORT"] = str(p_num)
                         hubo_cambios = True
-                        registrar_log(f"Puerto local modificado a: {p_num}", "SYS")
                 except ValueError:
                     pass
 
@@ -883,7 +786,6 @@ def configuracion():
                 set_key(RUTA_ENV, "AUTO_ABRIR_NAVEGADOR", auto_abrir)
                 os.environ["AUTO_ABRIR_NAVEGADOR"] = auto_abrir
                 hubo_cambios = True
-                registrar_log(f"Apertura automática de navegador: {auto_abrir}", "SYS")
 
             log_mode_ant = os.environ.get("LOG_MODE", "false").strip().lower()
             log_mode = "true" if "log_mode" in request.form else "false"
@@ -891,18 +793,14 @@ def configuracion():
                 set_key(RUTA_ENV, "LOG_MODE", log_mode)
                 os.environ["LOG_MODE"] = log_mode
                 hubo_cambios = True
-                registrar_log(f"Registro detallado (LOG_MODE) fijado a: {log_mode}", "SYS")
 
-            # ------------------------------------------------------------------
-            # Sincronización BYOC (E2EE AES-256)
-            # ------------------------------------------------------------------
+            # Parámetros BYOC
             sync_hab_ant = os.environ.get("SYNC_HABILITADO", "false").strip().lower()
             sync_hab = "true" if "sync_habilitado" in request.form else "false"
             if sync_hab != sync_hab_ant:
                 set_key(RUTA_ENV, "SYNC_HABILITADO", sync_hab)
                 os.environ["SYNC_HABILITADO"] = sync_hab
                 hubo_cambios = True
-                registrar_log(f"Sincronización BYOC {'activada' if sync_hab == 'true' else 'desactivada'}", "SYS")
 
             sync_carp_ant = os.environ.get("SYNC_CARPETA", "").strip()
             sync_carp = request.form.get("sync_carpeta", "").strip()
@@ -915,7 +813,6 @@ def configuracion():
                 set_key(RUTA_ENV, "SYNC_CARPETA", sync_carp)
                 os.environ["SYNC_CARPETA"] = sync_carp
                 hubo_cambios = True
-                registrar_log(f"Carpeta de sincronización BYOC actualizada: {sync_carp}", "SYS")
 
             sync_modo_ant = os.environ.get("SYNC_MODO_CIFRADO", "auto").strip().lower()
             sync_modo = request.form.get("sync_modo_cifrado", "auto").strip().lower()
@@ -923,7 +820,6 @@ def configuracion():
                 set_key(RUTA_ENV, "SYNC_MODO_CIFRADO", sync_modo)
                 os.environ["SYNC_MODO_CIFRADO"] = sync_modo
                 hubo_cambios = True
-                registrar_log(f"Modo de cifrado BYOC modificado a: {sync_modo.upper()}", "SYS")
 
             sync_auto_ant = os.environ.get("SYNC_AUTO_APLICAR", "false").strip().lower()
             sync_auto = "true" if "sync_auto_aplicar" in request.form else "false"
@@ -931,7 +827,6 @@ def configuracion():
                 set_key(RUTA_ENV, "SYNC_AUTO_APLICAR", sync_auto)
                 os.environ["SYNC_AUTO_APLICAR"] = sync_auto
                 hubo_cambios = True
-                registrar_log(f"Auto-aplicación de revisiones fijada a: {sync_auto}", "SYS")
 
             sync_disp_ant = os.environ.get("SYNC_NOMBRE_DISPOSITIVO", "").strip()
             sync_disp = request.form.get("sync_nombre_dispositivo", "").strip()
@@ -939,9 +834,7 @@ def configuracion():
                 set_key(RUTA_ENV, "SYNC_NOMBRE_DISPOSITIVO", sync_disp)
                 os.environ["SYNC_NOMBRE_DISPOSITIVO"] = sync_disp
                 hubo_cambios = True
-                registrar_log(f"Nombre de dispositivo local fijado a: '{sync_disp}'", "SYS")
 
-            # Detección de Rotación Segura de Llave de Cifrado
             clave_anterior = os.environ.get("SYNC_CLAVE", "").strip()
             nueva_clave = request.form.get("sync_clave", "").strip()
             clave_rotada = bool(nueva_clave and nueva_clave != clave_anterior)
@@ -962,21 +855,16 @@ def configuracion():
                     set_key(RUTA_ENV, "SYNC_ULTIMA_REVISION", rev_form)
                     os.environ["SYNC_ULTIMA_REVISION"] = rev_form
                     hubo_cambios = True
-                    registrar_log(f"Contador de revisión local fijado a: #{rev_form}", "SYS")
-                else:
-                    registrar_log("Intento de cambio de revisión ignorado: existe una bóveda activa o archivo .meta en la nube", "WARN")
 
-            # Protocolo de Re-Cifrado Inmediato ante Rotación de Clave
+            # Si se rotó la clave en caliente desde el formulario principal
             if clave_rotada and sync_hab == "true" and sync_carp and os.path.isdir(sync_carp):
-                registrar_log(f"Iniciando protocolo de rotación de llave en: {sync_carp}", "SYS")
                 for f_obs in [VAULT_ZIP_NAME, VAULT_META_NAME, VAULT_PREV_NAME, VAULT_TMP_NAME]:
                     r_obs = os.path.join(sync_carp, f_obs)
                     if os.path.exists(r_obs):
                         try:
                             os.remove(r_obs)
-                            registrar_log(f"Bóveda obsoleta eliminada: {f_obs}", "DELETE")
-                        except Exception as e:
-                            registrar_log(f"No se pudo eliminar {f_obs}: {e}", "ERROR")
+                        except Exception:
+                            pass
 
                 try:
                     rev_actual = int(os.environ.get("SYNC_ULTIMA_REVISION", "0").strip()) + 1
@@ -986,7 +874,6 @@ def configuracion():
                 db_path = getattr(database, "DB_PATH", "marcadores.db")
                 clave_empaque = "" if sync_modo == "libre" else nueva_clave
 
-                registrar_log(f"Empaquetando marcadores.db con nueva clave (Revisión #{rev_actual})...", "SYS")
                 exito, msg = sync_manager.exportar_boveda_cifrada(
                     carpeta_sync=sync_carp,
                     ruta_db=db_path,
@@ -997,13 +884,9 @@ def configuracion():
                 if exito:
                     set_key(RUTA_ENV, "SYNC_ULTIMA_REVISION", str(rev_actual))
                     os.environ["SYNC_ULTIMA_REVISION"] = str(rev_actual)
-                    registrar_log(f"Nueva bóveda publicada en la nube con éxito (Revisión #{rev_actual})", "SUCCESS")
-                    flash(f"🔑 Clave rotada con éxito. Bóveda regenerada con el nuevo cifrado (Revisión #{rev_actual}).", "success")
-                else:
-                    registrar_log(f"Fallo al re-cifrar la bóveda con la nueva clave: {msg}", "ERROR")
-                    flash(f"⚠ La clave se guardó pero falló el re-cifrado en la nube: {msg}", "error")
+                    flash(f"🔑 Clave guardada con éxito. Bóveda regenerada con el nuevo cifrado (Revisión #{rev_actual}).", "success")
 
-        # 2. Preferencias generales de usuario (libres de bloqueo)
+        # Preferencias de usuario
         favicons_ant = os.environ.get("MOSTRAR_FAVICONS", "true").strip().lower()
         mostrar_favicons = "true" if "mostrar_favicons" in request.form else "false"
         if mostrar_favicons != favicons_ant:
@@ -1030,9 +913,7 @@ def configuracion():
 
         return redirect(url_for("marcadores.configuracion", guardado=1))
 
-    # ==========================================================================
-    # PROCESAMIENTO GET: TELEMETRÍA Y ESTADO PARA LA UI
-    # ==========================================================================
+    # Métricas y estado para la UI
     total_carpetas = 0
     total_marcadores = 0
     peso_db = "0 KB"
@@ -1082,19 +963,8 @@ def configuracion():
 
     valores_env = dict(dotenv_values(RUTA_ENV)) if os.path.exists(RUTA_ENV) else {}
 
-    # Selección inteligente del template de configuración (config.html o configuracion.html)
-    plantilla_render = "configuracion.html"
-    try:
-        template_dir = current_app.template_folder
-        if os.path.exists(os.path.join(template_dir, "config.html")):
-            plantilla_render = "config.html"
-    except Exception:
-        pass
-
-    registrar_log("Panel de configuración y ajustes del sistema consultado", "INFO")
-
     return render_template(
-        plantilla_render,
+        "configuracion.html",
         valores=valores_env,
         guardado=request.args.get("guardado"),
         error_master=request.args.get("error_master"),
@@ -1110,9 +980,67 @@ def configuracion():
     )
 
 
+@marcadores_bp.route("/configuracion/sync/rotar_clave", methods=["POST"])
+def sync_rotar_clave():
+    """Genera atómicamente una nueva clave de 256 bits y re-cifra la bóveda en la nube."""
+    if not esta_desbloqueado():
+        flash("La configuración crítica se encuentra bloqueada. Use la Master Key para desbloquearla.", "error")
+        return redirect(url_for("marcadores.configuracion"))
+
+    nueva_clave = secrets.token_hex(32)
+    set_key(RUTA_ENV, "SYNC_CLAVE", nueva_clave)
+    os.environ["SYNC_CLAVE"] = nueva_clave
+    registrar_log("Rotación de SYNC_CLAVE generada (256 bits)", "SYS")
+
+    sync_hab = os.environ.get("SYNC_HABILITADO", "false").strip().lower() == "true"
+    sync_carp = os.environ.get("SYNC_CARPETA", "").strip()
+    sync_modo = os.environ.get("SYNC_MODO_CIFRADO", "auto").strip().lower()
+    sync_disp = os.environ.get("SYNC_NOMBRE_DISPOSITIVO", "Dispositivo PBM").strip()
+
+    if sync_hab and sync_carp and os.path.isdir(sync_carp):
+        registrar_log(f"Purgando bóvedas obsoletas en nube: {sync_carp}", "DELETE")
+        for f_obs in [VAULT_ZIP_NAME, VAULT_META_NAME, VAULT_PREV_NAME, VAULT_TMP_NAME]:
+            r_obs = os.path.join(sync_carp, f_obs)
+            if os.path.exists(r_obs):
+                try:
+                    os.remove(r_obs)
+                except Exception:
+                    pass
+
+        try:
+            rev_actual = int(os.environ.get("SYNC_ULTIMA_REVISION", "0").strip()) + 1
+        except ValueError:
+            rev_actual = 1
+
+        db_path = getattr(database, "DB_PATH", "marcadores.db")
+        clave_empaque = "" if sync_modo == "libre" else nueva_clave
+
+        exito, msg = sync_manager.exportar_boveda_cifrada(
+            carpeta_sync=sync_carp,
+            ruta_db=db_path,
+            clave_sync=clave_empaque,
+            nombre_equipo=sync_disp,
+            revision_actual=rev_actual
+        )
+
+        if exito:
+            with open(RUTA_ULTIMO_SYNC, "w", encoding="utf-8") as f:
+                f.write(str(time.time()))
+            set_key(RUTA_ENV, "SYNC_ULTIMA_REVISION", str(rev_actual))
+            os.environ["SYNC_ULTIMA_REVISION"] = str(rev_actual)
+            registrar_log(f"Bóveda re-cifrada y publicada con éxito (Revisión #{rev_actual})", "SUCCESS")
+            flash(f"🔑 Clave rotada con éxito (256 bits). La bóveda remota anterior fue eliminada y regenerada con el nuevo cifrado (Revisión #{rev_actual}). Copia la nueva clave en tus otros equipos.", "success")
+        else:
+            registrar_log(f"Fallo al re-cifrar la bóveda con la nueva clave: {msg}", "ERROR")
+            flash(f"⚠ La clave se rotó pero falló el empaquetado en la nube: {msg}", "error")
+    else:
+        flash("🔑 Nueva clave criptográfica generada con éxito (256 bits) en almacenamiento local.", "success")
+
+    return redirect(url_for("marcadores.configuracion"))
+
+
 @marcadores_bp.route("/configuracion/desbloquear", methods=["POST"])
 def desbloquear_critico():
-    """Valida la MASTER_KEY habilitando cambios sensibles por 120 segundos."""
     clave_ingresada = request.form.get("master_key", "").strip()
     master_key_actual = os.environ.get("MASTER_KEY", "").strip()
 
@@ -1129,7 +1057,6 @@ def desbloquear_critico():
 
 @marcadores_bp.route("/configuracion/bloquear", methods=["POST"])
 def bloquear_critico():
-    """Revoca el permiso administrativo de forma manual anticipando la expiración."""
     session.pop("desbloqueo_critico", None)
     registrar_log("Configuración crítica bloqueada manualmente", "SYS")
     return redirect(url_for("marcadores.configuracion"))
@@ -1137,7 +1064,6 @@ def bloquear_critico():
 
 @marcadores_bp.route("/configuracion/cerrar_sesiones", methods=["POST"])
 def cerrar_sesiones_globales():
-    """Invalida instantáneamente todas las cookies activas en la red rotando la SECRET_KEY."""
     nueva_key = secrets.token_hex(32)
     set_key(RUTA_ENV, "SECRET_KEY", nueva_key)
     os.environ["SECRET_KEY"] = nueva_key
@@ -1148,19 +1074,8 @@ def cerrar_sesiones_globales():
     return redirect(url_for("marcadores.login"))
 
 
-@marcadores_bp.route("/configuracion/posponer_backup", methods=["POST"])
-def posponer_backup():
-    """Pospone la notificación de respaldo en pantalla por 24 horas."""
-    silenciado_hasta = time.time() + SEGUNDOS_SILENCIO_BACKUP
-    with open(RUTA_SILENCIAR_BACKUP, "w", encoding="utf-8") as f:
-        f.write(str(silenciado_hasta))
-    registrar_log("Aviso preventivo de copia de seguridad pospuesto por 24 horas", "SYS")
-    return redirect(request.referrer or url_for("marcadores.home"))
-
-
 @marcadores_bp.route("/configuracion/borrar_todo", methods=["POST"])
 def borrar_todo_ruta():
-    """Vacía por completo todas las carpetas y marcadores bajo confirmación de Master Key."""
     if not esta_desbloqueado():
         registrar_log("Intento no autorizado de vaciado de base de datos sin desbloqueo", "ERROR")
         return redirect(url_for("marcadores.configuracion"))
@@ -1171,11 +1086,10 @@ def borrar_todo_ruta():
 
 
 # ==============================================================================
-# SECCIÓN 14: MOTOR DE SINCRONIZACIÓN BYOC (E2EE AES-256)
+# SECCIÓN 14: SINCRONIZACIÓN BYOC (E2EE AES-256)
 # ==============================================================================
 @marcadores_bp.route("/configuracion/sync/subir", methods=["POST"])
 def sync_subir_boveda():
-    """Empaqueta y exporta marcadores.db hacia la carpeta de nube compartida."""
     carpeta_sync = os.environ.get("SYNC_CARPETA", "").strip()
     if not carpeta_sync or not os.path.isdir(carpeta_sync):
         flash("La carpeta de sincronización no está configurada o no es accesible.", "error")
@@ -1237,7 +1151,6 @@ def sync_subir_boveda():
 
 @marcadores_bp.route("/configuracion/sync/descargar", methods=["POST"])
 def sync_descargar_boveda():
-    """Descarga, valida integridad criptográfica y restaura la bóveda de marcadores."""
     carpeta_sync = os.environ.get("SYNC_CARPETA", "").strip()
     if not carpeta_sync or not os.path.isdir(carpeta_sync):
         flash("La carpeta de sincronización no está configurada o no es accesible.", "error")
@@ -1284,7 +1197,6 @@ def sync_descargar_boveda():
 
 @marcadores_bp.route("/configuracion/sync/estado", methods=["GET"])
 def sync_consultar_estado():
-    """Endpoint JSON para sondeo dinámico y verificación de estado desde la UI."""
     carpeta_sync = os.environ.get("SYNC_CARPETA", "").strip()
     sync_habilitado = os.environ.get("SYNC_HABILITADO", "false").lower() == "true"
 
@@ -1353,7 +1265,6 @@ def sync_consultar_estado():
 
 @marcadores_bp.route("/configuracion/sync/explorar_carpeta", methods=["POST"])
 def sync_explorar_carpeta():
-    """Abre el selector de carpetas del SO y genera automáticamente la subcarpeta PBM_Sync."""
     if not esta_desbloqueado():
         return jsonify({"ok": False, "error": "Debes desbloquear la configuración crítica con tu Master Key primero."}), 403
 

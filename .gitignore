@@ -1,16 +1,65 @@
+# ==============================================================================
+# ENTORNO VIRTUAL Y DEPENDENCIAS
+# ==============================================================================
 .venv/
+env/
+venv/
+ENV/
+
+# ==============================================================================
+# ARCHIVOS DE CONFIGURACIÓN Y SECRETOS
+# ==============================================================================
 .env
+.env.corrupt*
+*.corrupt*
+
+# ==============================================================================
+# CACHÉ Y BYTECODE DE PYTHON
+# ==============================================================================
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+
+# ==============================================================================
+# PERSISTENCIA LOCAL (SQLITE) Y TRANSACCIONES
+# ==============================================================================
 marcadores.db
+marcadores.db-wal
+marcadores.db-shm
+marcadores.db-journal
+*.db.tmp
+
+# ==============================================================================
+# MOTOR DE SINCRONIZACIÓN BYOC & TEMPORALES ATÓMICOS
+# ==============================================================================
+ultimo_sync.txt
+*.pre_sync
+*.zip.tmp
+pbm_vault.zip
+pbm_vault.meta
+pbm_vault.prev.zip
+PBM_Sync/
+
+# ==============================================================================
+# COPIAS DE SEGURIDAD Y ARCHIVOS TESTIGO
+# ==============================================================================
+backups/
 ultimo_backup.txt
 silenciar_backup.txt
 backup_marcadores*.json
-*.corrupt*
-# Artefactos de PyInstaller
+backup_marcadores*.html
+bookmarks*.html
+
+# ==============================================================================
+# ARTEFACTOS DE COMPILACIÓN (PYINSTALLER / EJECUTABLES)
+# ==============================================================================
 build/
 dist/
 *.spec
-# Backups y exportaciones de marcadores HTML
-bookmarks*.html
-backup_marcadores*.html
+
+# ==============================================================================
+# ARCHIVOS RESIDUALES DEL SISTEMA OPERATIVO Y EDITORES
+# ==============================================================================
+.DS_Store
+Thumbs.db
+*.tmp

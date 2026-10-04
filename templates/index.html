@@ -3,35 +3,32 @@
 
 {% block contenido %}
     <!-- ======================================================================= -->
-    <!-- 1. IDENTIDAD DE PÁGINA Y AVISOS PREVENTIVOS DEL SISTEMA                 -->
+    <!-- 1. IDENTIDAD DE PÁGINA Y PASTILLA DE ESTADO DE SINCRONIZACIÓN          -->
     <!-- ======================================================================= -->
-    <h1 style="display: flex; align-items: center; gap: 10px;">
-        <img src="{{ url_for('static', filename='icon.svg') }}" alt="PBM" style="width: 32px; height: 32px; border-radius: 6px; object-fit: contain;">
-        <span class="badge-app">PBM</span>
-        <span>{{ carpeta_actual['nombre'] if carpeta_actual else 'Mis Marcadores' }}</span>
-    </h1>
+    <div class="encabezado-principal">
+        <h1 class="titulo-con-badge">
+            <img src="{{ url_for('static', filename='icon.svg') }}" alt="PBM" class="icono-app-header">
+            <span class="badge-app">PBM</span>
+            <span class="texto-titulo-header">{{ carpeta_actual['nombre'] if carpeta_actual else 'Mis Marcadores' }}</span>
+        </h1>
 
-    <!-- Alerta: Contraseña por defecto activa -->
-    {% if contraseña_por_defecto %}
-        <div class="aviso aviso-peligro">
-            ⚠️ Estás usando la contraseña por defecto (<code>cambiame</code>). Cámbiala en 
-            <a href="{{ url_for('marcadores.configuracion') }}" class="btn-link">Configuración</a> 
-            o mediante la consola del servidor.
-        </div>
-    {% endif %}
-
-    <!-- Alerta: Recordatorio periódico de copia de seguridad -->
-    {% if recordar_backup %}
-        <div class="aviso aviso-advertencia">
-            <span>⚠️ Hace {{ dias_sin_backup }} días que no realizas una copia de seguridad.</span>
-            <div class="aviso-acciones">
-                <a href="{{ url_for('marcadores.exportar') }}" class="btn-link">Descargar respaldo</a>
-                <form method="POST" action="{{ url_for('marcadores.posponer_backup') }}">
-                    <button type="submit" class="btn-secundario">Recordarme más tarde</button>
-                </form>
-            </div>
-        </div>
-    {% endif %}
+        <!-- Pastilla interactiva de Sincronización BYOC -->
+        {% if sync_hab %}
+            {% if sync_pendiente %}
+                <a href="{{ url_for('marcadores.configuracion') }}" class="pill-sync alerta" title="Hay cambios pendientes de sincronizar con la nube">
+                    <span class="pill-sync-icono">☁</span>
+                    <span>Sincronizar</span>
+                    <span class="sync-dot-pulse">●</span>
+                </a>
+            {% else %}
+                <a href="{{ url_for('marcadores.configuracion') }}" class="pill-sync ok" title="Bóveda al día con la nube">
+                    <span class="pill-sync-icono">☁</span>
+                    <span>Al día</span>
+                    <span class="sync-dot-estatico">●</span>
+                </a>
+            {% endif %}
+        {% endif %}
+    </div>
 
     <!-- ======================================================================= -->
     <!-- 2. BARRA DE HERRAMIENTAS, BÚSQUEDA Y NAVEGACIÓN GLOBAL                  -->
@@ -52,7 +49,7 @@
     <!-- Navegación de retorno al directorio raíz -->
     {% if carpeta_actual %}
         <div class="nav-volver">
-            <a href="{{ url_for('marcadores.home') }}" class="btn-nav">⬅️ Volver a Mis Marcadores</a>
+            <a href="{{ url_for('marcadores.home') }}" class="btn-nav">⬅️️ Volver a Mis Marcadores</a>
         </div>
     {% endif %}
 

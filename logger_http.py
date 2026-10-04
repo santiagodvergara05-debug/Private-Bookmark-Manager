@@ -1,6 +1,6 @@
 """
 ==============================================================================
-PCM PRIVATE CLIP MANAGER - TRADUCTOR Y FORMATEADOR DE PETICIONES HTTP
+PBM PRIVATE BOOKMARK MANAGER - TRADUCTOR Y FORMATEADOR DE PETICIONES HTTP
 ==============================================================================
 Módulo encargado de silenciar los registros crudos de Werkzeug e imprimir 
 cada petición con descripciones claras en palabras, íconos y colores ANSI.
@@ -71,12 +71,14 @@ def configurar_logger_http(app):
         mensaje_estado = ESTADOS_TRADUCIDOS.get(codigo, f"Código {codigo}")
         hora = datetime.now().strftime("%H:%M:%S")
 
-        # Clasificación visual del recurso solicitado
+        # Clasificación visual del recurso solicitado adaptada a la estructura de PBM
         ruta = request.path
-        if ruta.startswith("/static/css/"):
+        if ruta.endswith(".css") or "/css/" in ruta:
             etiqueta = f"{CLR_MAGENTA}🎨 [CSS]{CLR_RESET}"
-        elif ruta.startswith("/static/js/"):
+        elif ruta.endswith(".js") or "/js/" in ruta:
             etiqueta = f"{CLR_AMARILLO}⚡ [JS]{CLR_RESET}"
+        elif ruta.endswith((".svg", ".ico", ".png", ".jpg", ".jpeg", ".webp")):
+            etiqueta = f"{CLR_CYAN}🖼️  [ICON]{CLR_RESET}"
         elif ruta.startswith("/static/"):
             etiqueta = f"{CLR_GRIS}📁 [ASSET]{CLR_RESET}"
         elif request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
@@ -84,11 +86,11 @@ def configurar_logger_http(app):
         else:
             etiqueta = f"{CLR_AZUL}🌐 [PÁGINA]{CLR_RESET}"
 
-        # Salida formateada y clara en consola
+        # Salida formateada con espacio limpio tras la flecha
         print(
             f"{CLR_GRIS}[{hora}]{CLR_RESET} {etiqueta} "
-            f"{CLR_BOLD}{request.method:<6}{CLR_RESET} {ruta:<30} ➜ "
-            f"{color_cod}{mensaje_estado} ({codigo}){CLR_RESET}"
+            f"{CLR_BOLD}{request.method:<6}{CLR_RESET} {ruta:<32} ➜ "
+            f" {color_cod}{mensaje_estado} ({codigo}){CLR_RESET}"
         )
 
         return response
